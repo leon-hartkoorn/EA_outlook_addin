@@ -5,10 +5,12 @@
   "use strict";
 
   var LANES = [
-    { key: "today",   label: "Vandaag",      sub: "Sprint 1 day",    category: "Notion: Sprint 1 day",    color: "Preset1",  tone: "orange" },
-    { key: "nextday", label: "Volgende dag", sub: "Sprint next day", category: "Notion: Sprint next day", color: "Preset3",  tone: "yellow" },
-    { key: "week",    label: "Deze week",    sub: "Sprint 1 week",   category: "Notion: Sprint 1 week",   color: "Preset4",  tone: "green" },
-    { key: "backlog", label: "Backlog",      sub: "Backlog",         category: "Notion: Backlog",         color: "Preset12", tone: "gray" }
+    // Same order, names and colours as Leon's Notion board (Status select).
+    { key: "backlog", label: "Backlog",   sub: "ooit, nog geen sprint", category: "Notion: Backlog",             color: "Preset12", tone: "default" },
+    { key: "week",    label: "Sprint 1W", sub: "deze week",             category: "Notion: Sprint 1 week",       color: "Preset7",  tone: "blue" },
+    { key: "nextday", label: "Next day",  sub: "morgen",                category: "Notion: Sprint next day",     color: "Preset7",  tone: "blue" },
+    { key: "today",   label: "Sprint 1D", sub: "vandaag",               category: "Notion: Sprint 1 day",        color: "Preset0",  tone: "red" },
+    { key: "onhold",  label: "On hold",   sub: "wacht op iemand anders", category: "Notion: On hold/waiting for", color: "Preset7",  tone: "blue" }
   ];
   var NOTE_KEY = "evaNote";
   var LANE_KEY = "evaLane";

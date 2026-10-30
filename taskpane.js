@@ -1,7 +1,10 @@
-/* Eva: Naar Notion. Shows Eva's triage for the selected mail (custom property
-   evaTriage) with one-click actions, and tags the mail with a "Notion: <lane>"
-   category (and optional note) so Eva can turn it into a Notion card later.
-   No tokens, no network calls besides Office.js (incl. EWS via the mailbox). */
+/* EA Inbox Management. Shows EA's triage for the selected mail with one-click
+   actions, and tags the mail with a "Notion: <lane>" category (and optional
+   note) so EA can turn it into a Notion card later.
+   Read mode talks to Microsoft Graph with a token from Nested App Authentication
+   (NAA), so everything lands on the server directly. Classic Outlook neither
+   syncs Office custom properties nor allows EWS tokens any more.
+   Compose mode (no server id yet) keeps using Office.js locally. */
 (function () {
   "use strict";
 
@@ -15,6 +18,9 @@
   ];
   var NOTE_KEY = "evaNote";
   var LANE_KEY = "evaLane";
+  var TRIAGE_KEY = "evaTriage";
+  var ACTION_KEY = "evaAction";
+  var ACTION_CAT = { displayName: "EA: actie", color: "Preset8" };
   var busy = false;
 
   var $ = function (id) { return document.getElementById(id); };
@@ -29,23 +35,148 @@
     });
   }
   function item() { return Office.context.mailbox.item; }
-
-  function getItemCategories() {
-    return call(function (cb) { item().categories.getAsync(cb); }).then(function (v) { return v || []; });
-  }
-  function getMasterCategories() {
-    return call(function (cb) { Office.context.mailbox.masterCategories.getAsync(cb); }).then(function (v) { return v || []; });
-  }
-  function loadProps() {
-    return call(function (cb) { item().loadCustomPropertiesAsync(cb); });
-  }
+  function readMode() { return !!(item() && item().itemId); }
 
   function laneByCategory(name) {
     for (var i = 0; i < LANES.length; i++) if (LANES[i].category === name) return LANES[i];
     return null;
   }
+  function msg(err) {
+    if (!err) return "onbekende fout";
+    var code = err.errorCode || err.code;
+    var text = err.message || err.name || "onbekende fout";
+    return code && text.indexOf(code) < 0 ? text + " (" + code + ")" : text;
+  }
 
-  // ---- Core actions --------------------------------------------------------
+  // ---- Graph via Nested App Authentication --------------------------------
+  var AUTH = {
+    clientId: "cee9ce67-5476-42a8-b9cb-46d110f60d08",
+    authority: "https://login.microsoftonline.com/650e65a6-7112-4147-9ef8-c7e6ca69613c",
+    scopes: ["https://graph.microsoft.com/Mail.ReadWrite"]
+  };
+  var GRAPH = "https://graph.microsoft.com/v1.0";
+  var PROP_ID = "String {00020329-0002-0000-C000-000000000046} Name cecp-2c2658f7-4faa-450c-9387-4f9ccf079dbb";
+  var pcaPromise = null;
+
+  function naaSupported() {
+    try { return Office.context.requirements.isSetSupported("NestedAppAuth", "1.1"); } catch (e) { return false; }
+  }
+  function getPca() {
+    if (!pcaPromise) {
+      if (typeof msal === "undefined" || !msal.createNestablePublicClientApplication) {
+        return Promise.reject(new Error("Aanmeldbibliotheek niet geladen"));
+      }
+      pcaPromise = msal.createNestablePublicClientApplication({
+        auth: { clientId: AUTH.clientId, authority: AUTH.authority },
+        cache: { cacheLocation: "localStorage" }
+      }).catch(function (e) { pcaPromise = null; throw e; });
+    }
+    return pcaPromise;
+  }
+  function loginHint() {
+    try { return Office.context.mailbox.userProfile.emailAddress || undefined; } catch (e) { return undefined; }
+  }
+  // interactive: false = only silent (used on pane load, where a popup without a click can be blocked).
+  function getGraphToken(interactive) {
+    if (!naaSupported()) {
+      var e = new Error("Deze Outlook-versie ondersteunt geen aanmelden via de add-in (Nested App Authentication). Werk Outlook bij of gebruik Outlook op het web.");
+      e.code = "NAA_UNSUPPORTED";
+      return Promise.reject(e);
+    }
+    return getPca().then(function (pca) {
+      var account = pca.getActiveAccount() || pca.getAllAccounts()[0] || null;
+      var req = { scopes: AUTH.scopes };
+      if (account) req.account = account; else req.loginHint = loginHint();
+      return pca.acquireTokenSilent(req).catch(function (err) {
+        if (interactive === false) {
+          var e2 = new Error("Aanmelden nodig");
+          e2.code = "LOGIN_REQUIRED";
+          e2.cause = err;
+          throw e2;
+        }
+        return pca.acquireTokenPopup({ scopes: AUTH.scopes, loginHint: loginHint() });
+      }).then(function (res) {
+        if (res.account) pca.setActiveAccount(res.account);
+        return res.accessToken;
+      });
+    });
+  }
+
+  function graph(method, path, body, interactive) {
+    return getGraphToken(interactive).then(function (token) {
+      var opts = { method: method, headers: { Authorization: "Bearer " + token } };
+      if (body !== undefined) {
+        opts.headers["Content-Type"] = "application/json";
+        opts.body = JSON.stringify(body);
+      }
+      return fetch(path.indexOf("https://") === 0 ? path : GRAPH + path, opts);
+    }).then(function (r) {
+      if (r.status === 204) return null;
+      return r.text().then(function (txt) {
+        var data = null;
+        try { data = txt ? JSON.parse(txt) : null; } catch (e) { data = null; }
+        if (!r.ok) {
+          var ge = (data && data.error) || {};
+          var err = new Error("Graph " + r.status + (ge.message ? ": " + ge.message : ""));
+          err.code = ge.code || ("HTTP" + r.status);
+          throw err;
+        }
+        return data;
+      });
+    });
+  }
+
+  function restId() {
+    return Office.context.mailbox.convertToRestId(item().itemId, Office.MailboxEnums.RestVersion.v2_0);
+  }
+  function msgPath(id) { return "/me/messages/" + encodeURIComponent(id); }
+
+  function getMessage(id, interactive) {
+    var q = "?$select=id,categories,isRead&$expand=singleValueExtendedProperties($filter=id eq '" + PROP_ID + "')";
+    return graph("GET", msgPath(id) + q, undefined, interactive).then(function (m) {
+      var props = {};
+      var ext = (m && m.singleValueExtendedProperties) || [];
+      if (ext.length && ext[0].value) {
+        try { props = JSON.parse(ext[0].value) || {}; } catch (e) { props = {}; }
+      }
+      return { id: m.id, categories: m.categories || [], isRead: !!m.isRead, props: props };
+    });
+  }
+
+  // Read-modify-write of categories and the custom-property JSON in one PATCH.
+  // Writes are queued so a debounced note save never interleaves with a lane click.
+  var writeQueue = Promise.resolve();
+  function mutateMessage(id, fn) {
+    var run = function () {
+      return getMessage(id).then(function (m) {
+        var cats = m.categories.slice();
+        var props = Object.assign({}, m.props);
+        var res = fn(cats, props) || {};
+        var patch = {};
+        if (res.categories) patch.categories = res.categories;
+        if (res.props) {
+          // Office custom properties: a JSON object of string values.
+          var clean = {};
+          Object.keys(res.props).forEach(function (k) {
+            var v = res.props[k];
+            if (v === undefined || v === null || v === "") return;
+            clean[k] = typeof v === "string" ? v : JSON.stringify(v);
+          });
+          patch.singleValueExtendedProperties = [{ id: PROP_ID, value: JSON.stringify(clean) }];
+        }
+        if (!patch.categories && !patch.singleValueExtendedProperties) return m;
+        return graph("PATCH", msgPath(id), patch).then(function () { return m; });
+      });
+    };
+    var p = writeQueue.then(run, run);
+    writeQueue = p.catch(function () {});
+    return p;
+  }
+
+  // ---- Master categories (local Office.js is fine for these) ---------------
+  function getMasterCategories() {
+    return call(function (cb) { Office.context.mailbox.masterCategories.getAsync(cb); }).then(function (v) { return v || []; });
+  }
   function ensureMasterCategories(list) {
     list = list || LANES.map(function (l) { return { displayName: l.category, color: l.color }; });
     return getMasterCategories().then(function (existing) {
@@ -53,36 +184,50 @@
       existing.forEach(function (c) { have[c.displayName.toLowerCase()] = true; });
       var missing = list.filter(function (m) { return !have[m.displayName.toLowerCase()]; });
       if (!missing.length) return;
-      return call(function (cb) { Office.context.mailbox.masterCategories.addAsync(missing, cb); })
-        .catch(function (err) {
-          // Another client may have added one in the meantime; re-check before failing.
-          return getMasterCategories().then(function (now) {
-            var names = now.map(function (c) { return c.displayName.toLowerCase(); });
-            var stillMissing = missing.filter(function (m) { return names.indexOf(m.displayName.toLowerCase()) < 0; });
-            if (stillMissing.length) throw err;
-          });
-        });
+      return call(function (cb) { Office.context.mailbox.masterCategories.addAsync(missing, cb); });
+    }).catch(function () { /* colour only; the category itself is set via Graph */ });
+  }
+
+  // ---- Compose mode: no server id yet, so stay local via Office.js ---------
+  function localCategories() {
+    return call(function (cb) { item().categories.getAsync(cb); }).then(function (v) {
+      return (v || []).map(function (c) { return c.displayName; });
     });
   }
-
-  function currentNotionCategories() {
-    return getItemCategories().then(function (cats) {
-      return cats.map(function (c) { return c.displayName; }).filter(function (n) { return !!laneByCategory(n); });
-    });
-  }
-
-  function removeCategories(names) {
-    if (!names.length) return Promise.resolve();
-    return call(function (cb) { item().categories.removeAsync(names, cb); });
-  }
-
-  // Note is best effort: the category alone is enough for Eva.
-  function saveNote(text, lane) {
-    return loadProps().then(function (props) {
-      if (text) props.set(NOTE_KEY, text); else props.remove(NOTE_KEY);
+  function localProps() { return call(function (cb) { item().loadCustomPropertiesAsync(cb); }); }
+  function localApply(lane, note) {
+    return localCategories().then(function (cats) {
+      var others = cats.filter(function (n) { return laneByCategory(n) && (!lane || n !== lane.category); });
+      var chain = others.length ? call(function (cb) { item().categories.removeAsync(others, cb); }) : Promise.resolve();
+      return chain.then(function () {
+        if (lane && cats.indexOf(lane.category) < 0) return call(function (cb) { item().categories.addAsync([lane.category], cb); });
+      });
+    }).then(localProps).then(function (props) {
+      if (note) props.set(NOTE_KEY, note); else props.remove(NOTE_KEY);
       if (lane) props.set(LANE_KEY, lane.category); else props.remove(LANE_KEY);
       return call(function (cb) { props.saveAsync(cb); });
-    }).then(function () { return true; }, function () { return false; });
+    });
+  }
+
+  // ---- Lanes and note ------------------------------------------------------
+  // lane null = remove lane and note.
+  function applyLane(lane, note) {
+    if (!readMode()) return localApply(lane, note);
+    return mutateMessage(restId(), function (cats, props) {
+      var next = cats.filter(function (n) { return !laneByCategory(n); });
+      if (lane) next.push(lane.category);
+      props[NOTE_KEY] = lane ? note : "";
+      props[LANE_KEY] = lane ? lane.category : "";
+      return { categories: next, props: props };
+    });
+  }
+  function saveNote(note, lane) {
+    if (!readMode()) return localApply(lane, note);
+    return mutateMessage(restId(), function (cats, props) {
+      props[NOTE_KEY] = note;
+      props[LANE_KEY] = lane ? lane.category : "";
+      return { props: props };
+    });
   }
 
   function pick(lane) {
@@ -91,20 +236,8 @@
     setBusy(true);
     setStatus("Bezig...");
     ensureMasterCategories()
-      .then(currentNotionCategories)
-      .then(function (present) {
-        var others = present.filter(function (n) { return n !== lane.category; });
-        return removeCategories(others).then(function () {
-          if (present.indexOf(lane.category) >= 0) return;
-          return call(function (cb) { item().categories.addAsync([lane.category], cb); });
-        });
-      })
-      .then(function () { return saveNote(note, lane); })
-      .then(function (noteSaved) {
-        showDone(lane, note);
-        if (note && !noteSaved) setStatus("Lane staat erop. De notitie kon niet worden opgeslagen.", true);
-        else setStatus("");
-      })
+      .then(function () { return applyLane(lane, note); })
+      .then(function () { showDone(lane, note); setStatus(""); })
       .catch(function (err) { setStatus("Dat lukte niet: " + msg(err), true); })
       .then(function () { setBusy(false); });
   }
@@ -113,9 +246,7 @@
     if (busy) return;
     setBusy(true);
     setStatus("Ongedaan maken...");
-    currentNotionCategories()
-      .then(removeCategories)
-      .then(function () { return saveNote("", null); })
+    applyLane(null, "")
       .then(function () {
         showDone(null);
         $("note").value = "";
@@ -125,17 +256,13 @@
       .then(function () { setBusy(false); });
   }
 
-  // ---- Eva triage ----------------------------------------------------------
-  // Eva writes "evaTriage" (a JSON string) into the custom properties of a mail.
-  // A click is recorded as "evaAction" plus the category "EA: actie"; Eva's
-  // poller executes it. Archive and "gelezen" are also tried directly via EWS.
-  var TRIAGE_KEY = "evaTriage";
-  var ACTION_KEY = "evaAction";
-  var ACTION_CAT = { displayName: "EA: actie", color: "Preset8" };
-  var M_NS = "http://schemas.microsoft.com/exchange/services/2006/messages";
-  var T_NS = "http://schemas.microsoft.com/exchange/services/2006/types";
-  var folderCache = {};
-  var recentUndo = null;   // undo for a real EWS move; survives a mail switch
+  // ---- EA triage -----------------------------------------------------------
+  // EA writes "evaTriage" into the custom-property JSON of a mail (tools/mail_triage.py).
+  // Archive and "gelezen" run directly via Graph; other clicks are recorded as
+  // "evaAction" plus the category "EA: actie" for EA to execute.
+  var folderCache = {};    // normalised path -> folder id
+  var childCache = {};     // parent id ("" = top level) -> [{id, displayName}]
+  var recentUndo = null;   // undo for a real move; survives a mail switch
   var stateUndo = null;    // undo for the state shown in the triage card
   var currentTriage = null;
 
@@ -183,149 +310,70 @@
     return "triage " + d.getDate() + "/" + (d.getMonth() + 1) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
   }
 
-  // ---- EWS (classic Outlook, Outlook on the web) ---------------------------
-  function xmlEsc(s) {
-    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  // ---- Folders and moves via Graph -----------------------------------------
+  function norm(s) { return String(s).toLowerCase().replace(/\s*\/\s*/g, "/").replace(/\s+/g, " ").trim(); }
+
+  function listChildren(parentId) {
+    if (childCache[parentId]) return Promise.resolve(childCache[parentId]);
+    var first = parentId
+      ? "/me/mailFolders/" + encodeURIComponent(parentId) + "/childFolders?$top=100&$select=id,displayName"
+      : "/me/mailFolders?$top=100&$select=id,displayName";
+    var out = [];
+    function page(url) {
+      return graph("GET", url).then(function (d) {
+        out = out.concat((d && d.value) || []);
+        if (d && d["@odata.nextLink"]) return page(d["@odata.nextLink"]);
+        childCache[parentId] = out;
+        return out;
+      });
+    }
+    return page(first);
   }
-  function ewsAvailable() {
-    return !!(Office.context.mailbox && typeof Office.context.mailbox.makeEwsRequestAsync === "function" && item() && item().itemId);
-  }
-  var lastEwsRaw = "";
-  function ews(body) {
-    var env = '<?xml version="1.0" encoding="utf-8"?>' +
-      '<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:m="' + M_NS + '" xmlns:t="' + T_NS + '">' +
-      '<soap:Header><t:RequestServerVersion Version="Exchange2013"/></soap:Header>' +
-      '<soap:Body>' + body + '</soap:Body></soap:Envelope>';
-    return new Promise(function (resolve, reject) {
-      try {
-        Office.context.mailbox.makeEwsRequestAsync(env, function (r) {
-          if (r.status !== Office.AsyncResultStatus.Succeeded) { reject(r.error || new Error("EWS mislukt")); return; }
-          var doc = new DOMParser().parseFromString(r.value, "text/xml");
-          lastEwsRaw = String(r.value || "").slice(0, 400);
-          // A SOAP fault has no ResponseClass; surface it instead of treating it as an empty answer.
-          var fault = doc.getElementsByTagName("faultstring")[0] || doc.getElementsByTagNameNS("http://schemas.xmlsoap.org/soap/envelope/", "Fault")[0];
-          if (fault) { reject(new Error("EWS fault: " + fault.textContent.slice(0, 200))); return; }
-          var all = doc.getElementsByTagName("*");
-          for (var i = 0; i < all.length; i++) {
-            var rc = all[i].getAttribute && all[i].getAttribute("ResponseClass");
-            if (rc && rc !== "Success") {
-              var t = all[i].getElementsByTagNameNS(M_NS, "MessageText")[0];
-              reject(new Error(t ? t.textContent : "EWS fout"));
-              return;
-            }
-          }
-          resolve(doc);
-        });
-      } catch (e) { reject(e); }
-    });
-  }
+
+  // Folder names can contain "/" themselves ("6. Advisors / Partners"), so at each
+  // level try the longest run of path segments that matches a folder name.
   function findFolderId(path) {
-    if (folderCache[path]) return Promise.resolve(folderCache[path]);
-    var parts = path.split("/").map(function (p) { return p.trim(); }).filter(Boolean);
-    var parent = '<t:DistinguishedFolderId Id="msgfolderroot"/>';
-    var chain = Promise.resolve(null);
-    parts.forEach(function (name) {
-      chain = chain.then(function () {
-        return ews('<m:FindFolder Traversal="Shallow"><m:FolderShape><t:BaseShape>IdOnly</t:BaseShape></m:FolderShape>' +
-          '<m:Restriction><t:IsEqualTo><t:FieldURI FieldURI="folder:DisplayName"/><t:FieldURIOrConstant>' +
-          '<t:Constant Value="' + xmlEsc(name) + '"/></t:FieldURIOrConstant></t:IsEqualTo></m:Restriction>' +
-          '<m:ParentFolderIds>' + parent + '</m:ParentFolderIds></m:FindFolder>').then(function (doc) {
-          var f = doc.getElementsByTagNameNS(T_NS, "FolderId")[0];
-          if (!f) throw new Error("Map niet gevonden: " + name);
-          parent = '<t:FolderId Id="' + xmlEsc(f.getAttribute("Id")) + '"/>';
-          return f.getAttribute("Id");
-        });
+    var key = norm(path);
+    if (folderCache[key]) return Promise.resolve(folderCache[key]);
+    var parts = String(path).split("/");
+    function step(parentId, rest) {
+      if (!rest.length) return Promise.resolve(parentId);
+      return listChildren(parentId).then(function (kids) {
+        for (var k = rest.length; k >= 1; k--) {
+          var want = norm(rest.slice(0, k).join("/"));
+          for (var i = 0; i < kids.length; i++) {
+            if (norm(kids[i].displayName) === want) return step(kids[i].id, rest.slice(k));
+          }
+        }
+        var e = new Error("Map niet gevonden: " + rest.join("/").trim());
+        e.code = "FOLDER_NOT_FOUND";
+        throw e;
       });
-    });
-    return chain.then(function (id) { folderCache[path] = id; return id; });
-  }
-  // Read Eva's custom properties straight from the server. Classic Outlook in cached mode does not
-  // always see properties that Eva wrote via Graph, so this is the fallback when the local copy is empty.
-  var lastEwsDiag = "";
-  function ewsCustomProps(id) {
-    return ews('<m:GetItem><m:ItemShape><t:BaseShape>IdOnly</t:BaseShape><t:AdditionalProperties>' +
-      '<t:ExtendedFieldURI DistinguishedPropertySetId="PublicStrings" PropertyName="cecp-2c2658f7-4faa-450c-9387-4f9ccf079dbb" PropertyType="String"/>' +
-      '</t:AdditionalProperties></m:ItemShape><m:ItemIds><t:ItemId Id="' + xmlEsc(id) + '"/></m:ItemIds></m:GetItem>').then(function (doc) {
-      var v = doc.getElementsByTagNameNS(T_NS, "Value")[0];
-      var xml = new XMLSerializer().serializeToString(doc);
-      lastEwsDiag = "ext:" + (xml.indexOf("ExtendedProperty") >= 0 ? "ja" : "nee") + " len:" + xml.length + " id:" + String(id).slice(-10);
-      if (!v) return null;
-      try { return JSON.parse(v.textContent); } catch (e) { lastEwsDiag += " parse-fout"; return null; }
-    });
-  }
-  // Eva publishes all triage as JSON in one message in the folder "EA Triage" (tools/triage_store.py).
-  // Read it via EWS from the server: classic Outlook does not sync Graph-written custom properties.
-  var storeCache = null, storeAt = 0;
-  function loadStore() {
-    if (storeCache && Date.now() - storeAt < 180000) return Promise.resolve(storeCache);
-    return findFolderId("EA Triage").then(function (fid) {
-      return ews('<m:FindItem Traversal="Shallow"><m:ItemShape><t:BaseShape>IdOnly</t:BaseShape></m:ItemShape>' +
-        '<m:IndexedPageItemView MaxEntriesReturned="1" Offset="0" BasePoint="Beginning"/>' +
-        '<m:SortOrder><t:FieldOrder Order="Descending"><t:FieldURI FieldURI="item:LastModifiedTime"/></t:FieldOrder></m:SortOrder>' +
-        '<m:ParentFolderIds><t:FolderId Id="' + xmlEsc(fid) + '"/></m:ParentFolderIds></m:FindItem>');
-    }).then(function (doc) {
-      var it = doc.getElementsByTagNameNS(T_NS, "ItemId")[0];
-      if (!it) return {};
-      return ews('<m:GetItem><m:ItemShape><t:BaseShape>IdOnly</t:BaseShape><t:BodyType>Text</t:BodyType>' +
-        '<t:AdditionalProperties><t:FieldURI FieldURI="item:Body"/></t:AdditionalProperties></m:ItemShape>' +
-        '<m:ItemIds><t:ItemId Id="' + xmlEsc(it.getAttribute("Id")) + '"/></m:ItemIds></m:GetItem>').then(function (d2) {
-        var b = d2.getElementsByTagNameNS(T_NS, "Body")[0];
-        try { storeCache = JSON.parse(b ? b.textContent : "{}"); } catch (e) { storeCache = {}; }
-        storeAt = Date.now();
-        return storeCache;
-      });
-    });
+    }
+    return step("", parts).then(function (id) { folderCache[key] = id; return id; });
   }
 
-  function ewsIsRead(id) {
-    return ews('<m:GetItem><m:ItemShape><t:BaseShape>IdOnly</t:BaseShape><t:AdditionalProperties>' +
-      '<t:FieldURI FieldURI="message:IsRead"/></t:AdditionalProperties></m:ItemShape>' +
-      '<m:ItemIds><t:ItemId Id="' + xmlEsc(id) + '"/></m:ItemIds></m:GetItem>').then(function (doc) {
-      var n = doc.getElementsByTagNameNS(T_NS, "IsRead")[0];
-      return n ? n.textContent === "true" : false;
-    });
-  }
-  function ewsSetRead(id, read) {
-    return ews('<m:UpdateItem MessageDisposition="SaveOnly" ConflictResolution="AlwaysOverwrite"><m:ItemChanges><t:ItemChange>' +
-      '<t:ItemId Id="' + xmlEsc(id) + '"/><t:Updates><t:SetItemField><t:FieldURI FieldURI="message:IsRead"/>' +
-      '<t:Message><t:IsRead>' + (read ? "true" : "false") + '</t:IsRead></t:Message></t:SetItemField></t:Updates>' +
-      '</t:ItemChange></m:ItemChanges></m:UpdateItem>');
-  }
-  function ewsMove(id, folderXml) {
-    return ews('<m:MoveItem><m:ToFolderId>' + folderXml + '</m:ToFolderId>' +
-      '<m:ItemIds><t:ItemId Id="' + xmlEsc(id) + '"/></m:ItemIds></m:MoveItem>').then(function (doc) {
-      var n = doc.getElementsByTagNameNS(T_NS, "ItemId")[0];
-      return n ? n.getAttribute("Id") : null;
-    });
+  function setRead(id, read) { return graph("PATCH", msgPath(id), { isRead: !!read }); }
+  function moveTo(id, destinationId) {
+    return graph("POST", msgPath(id) + "/move", { destinationId: destinationId }).then(function (m) { return m && m.id; });
   }
 
-  // ---- Recorded actions (all Outlook versions) -----------------------------
+  // ---- Recorded actions ----------------------------------------------------
   function recordAction(a) {
     var payload = { type: a.type, params: actionParams(a), label: actionLabel(a), at: new Date().toISOString() };
-    return ensureMasterCategories([ACTION_CAT])
-      .then(loadProps)
-      .then(function (props) {
-        props.set(ACTION_KEY, JSON.stringify(payload));
-        return call(function (cb) { props.saveAsync(cb); });
-      })
-      .then(getItemCategories)
-      .then(function (cats) {
-        var has = cats.some(function (c) { return c.displayName === ACTION_CAT.displayName; });
-        if (!has) return call(function (cb) { item().categories.addAsync([ACTION_CAT.displayName], cb); });
-      })
-      .then(function () { return payload; });
+    return ensureMasterCategories([ACTION_CAT]).then(function () {
+      return mutateMessage(restId(), function (cats, props) {
+        props[ACTION_KEY] = JSON.stringify(payload);
+        if (cats.indexOf(ACTION_CAT.displayName) < 0) cats.push(ACTION_CAT.displayName);
+        return { categories: cats, props: props };
+      });
+    }).then(function () { return payload; });
   }
   function clearRecordedAction() {
-    return getItemCategories()
-      .then(function (cats) {
-        var has = cats.some(function (c) { return c.displayName === ACTION_CAT.displayName; });
-        if (has) return call(function (cb) { item().categories.removeAsync([ACTION_CAT.displayName], cb); });
-      })
-      .then(loadProps)
-      .then(function (props) {
-        props.remove(ACTION_KEY);
-        return call(function (cb) { props.saveAsync(cb); });
-      });
+    return mutateMessage(restId(), function (cats, props) {
+      delete props[ACTION_KEY];
+      return { categories: cats.filter(function (n) { return n !== ACTION_CAT.displayName; }), props: props };
+    });
   }
 
   function pendingText(a) {
@@ -351,36 +399,37 @@
       showTriageState("Blijft staan", false);
       return;
     }
-    var itemId = item().itemId;
+    var id = restId();
     setBusy(true);
     setStatus("Bezig...");
-    var direct = Promise.reject(new Error("geen EWS"));
-    if (ewsAvailable() && (a.type === "archive" || a.type === "fyi")) {
-      direct = ewsIsRead(itemId).then(function (wasRead) {
-        if (a.type === "fyi") {
-          return ewsSetRead(itemId, true).then(function () {
-            return { text: "Gemarkeerd als gelezen", undo: function () { return ewsSetRead(itemId, wasRead); } };
-          });
-        }
-        if (!a.folderPath) throw new Error("geen map");
-        // Resolve the folder first, so a missing folder falls back before anything changes.
+    var direct;
+    if (a.type === "fyi") {
+      direct = getMessage(id).then(function (m) {
+        return setRead(id, true).then(function () {
+          return { text: "Gemarkeerd als gelezen", undo: function () { return setRead(id, m.isRead); } };
+        });
+      });
+    } else if (a.type === "archive") {
+      direct = !a.folderPath ? Promise.reject(new Error("Geen map in de triage")) : getMessage(id).then(function (m) {
+        // Resolve the folder first, so a missing folder changes nothing.
         return findFolderId(a.folderPath).then(function (fid) {
-          return ewsSetRead(itemId, true).then(function () {
-            return ewsMove(itemId, '<t:FolderId Id="' + xmlEsc(fid) + '"/>');
-          });
+          return (m.isRead ? Promise.resolve() : setRead(id, true)).then(function () { return moveTo(id, fid); });
         }).then(function (newId) {
+          var label = a.folderLabel || a.folderPath;
           return {
             moved: true,
-            text: "Gearchiveerd in " + (a.folderLabel || a.folderPath),
+            text: "Gearchiveerd in " + label,
             undo: function () {
               if (!newId) return Promise.reject(new Error("terugzetten kan niet, zoek hem in " + a.folderPath));
-              return ewsMove(newId, '<t:DistinguishedFolderId Id="inbox"/>').then(function (backId) {
-                if (!wasRead && backId) return ewsSetRead(backId, false);
+              return moveTo(newId, "inbox").then(function (backId) {
+                if (!m.isRead && backId) return setRead(backId, false);
               });
             }
           };
         });
       });
+    } else {
+      direct = Promise.reject({ record: true });
     }
     direct
       .then(function (res) {
@@ -391,12 +440,12 @@
           showTriageState(res.text, true, res.undo);
         }
         setStatus("");
-      }, function () {
-        // Fallback: record the action for Eva's poller.
+      }, function (err) {
+        // Draft and other actions, or a direct move that failed: record it for EA.
         return recordAction(a).then(function (payload) {
           showTriageState(pendingText(payload), true, clearRecordedAction);
-          setStatus("");
-        });
+          setStatus(err && !err.record ? "Direct uitvoeren lukte niet (" + msg(err) + "), EA doet het." : "");
+        }, function (err2) { throw (err && !err.record) ? err : err2; });
       })
       .catch(function (err) { setStatus("Dat lukte niet: " + msg(err), true); })
       .then(function () { setBusy(false); });
@@ -444,9 +493,10 @@
 
   function renderTriage(t, action) {
     currentTriage = t;
-    var readMode = !!(item() && item().itemId); // triage only applies to a received mail
-    $("triage").hidden = !t || !readMode;
-    $("noTriage").hidden = !!t || !readMode;
+    var rm = readMode(); // triage only applies to a received mail
+    $("triage").hidden = !t || !rm;
+    $("noTriage").hidden = !!t || !rm;
+    $("noTriage").textContent = "Nog geen triage voor deze mail";
     showTriageState(null);
     if (!t) return;
     $("triageAt").textContent = formatAt(t.at);
@@ -528,8 +578,6 @@
     s.classList.toggle("error", !!isError);
   }
 
-  function msg(err) { return (err && (err.message || err.name)) || "onbekende fout"; }
-
   function loadSubject() {
     var it = item();
     if (!it) { $("subject").textContent = "Geen mail geselecteerd"; return; }
@@ -540,70 +588,57 @@
   }
 
   // Show the existing state when the pane opens or the selected mail changes.
-  function refresh() {
+  var refreshSeq = 0;
+  function refresh(interactive) {
+    var seq = ++refreshSeq;
     setStatus("");
     $("note").value = "";
     showDone(null);
     currentTriage = null;
     $("triage").hidden = true;
     $("noTriage").hidden = true;
-    $("diag").hidden = true;
-    if (!item()) { loadSubject(); return; }
+    $("signin").hidden = true;
     loadSubject();
-    // Load categories and custom properties independently: one failing must not hide the triage.
-    var propsErr = "";
-    Promise.all([
-      currentNotionCategories().catch(function () { return []; }),
-      loadProps().catch(function (e) { propsErr = msg(e); return null; })
-    ]).then(function (res) {
-      var p = res[1];
-      var note = p ? (p.get(NOTE_KEY) || "") : "";
-      var lane = res[0].length ? laneByCategory(res[0][0]) : null;
-      $("note").value = note;
-      showDone(lane, note);
-      var tri = p ? parseJson(p.get(TRIAGE_KEY)) : null;
-      renderTriage(tri, p ? parseJson(p.get(ACTION_KEY)) : null);
-      if (!tri) {
-        var keys = [];
-        try { keys = Object.keys((p && p.getAll && p.getAll()) || {}); } catch (e) {}
-        var local = propsErr ? "fout: " + propsErr : "velden: " + (keys.join(", ") || "geen");
-        $("noTriage").textContent = "Triage ophalen...";
-        $("diag").hidden = false;
-        if (!ewsAvailable()) { $("noTriage").textContent = "Nog geen triage voor deze mail (" + local + "; server niet bereikbaar)"; return; }
-        var forId = item().itemId;
-        var imid = String(item().internetMessageId || "");
-        loadStore().then(function (store) {
-          if (!item() || item().itemId !== forId) return; // selection moved on
-          var bare = imid.replace(/^<|>$/g, "");
-          var t2 = store[imid] || store["<" + bare + ">"] || store[bare] || null;
-          if (t2) { renderTriage(parseJson(t2), p ? parseJson(p.get(ACTION_KEY)) : null); return; }
-          $("noTriage").textContent = "Nog geen triage voor deze mail (" + Object.keys(store).length + " mails in de triage)";
-        }).catch(function (e) {
-          $("noTriage").textContent = "Nog geen triage voor deze mail (triage niet bereikbaar: " + msg(e) + ")";
-          // Diagnostic: which top-level folders does EWS see from here?
-          ews('<m:FindFolder Traversal="Shallow"><m:FolderShape><t:BaseShape>Default</t:BaseShape></m:FolderShape>' +
-            '<m:IndexedPageFolderView MaxEntriesReturned="60" Offset="0" BasePoint="Beginning"/>' +
-            '<m:ParentFolderIds><t:DistinguishedFolderId Id="msgfolderroot"/></m:ParentFolderIds></m:FindFolder>').then(function (d) {
-            var n = d.getElementsByTagNameNS(T_NS, "DisplayName"), names = [];
-            for (var i = 0; i < n.length; i++) names.push(n[i].textContent);
-            $("noTriage").textContent += " | mappen: " + names.join(", ") + " | raw: " + lastEwsRaw;
-          }, function (e2) { $("noTriage").textContent += " | mappen-fout: " + msg(e2); });
+    if (!item()) return;
+    if (!readMode()) {
+      // Compose: lanes and note stay local.
+      Promise.all([localCategories().catch(function () { return []; }), localProps().catch(function () { return null; })])
+        .then(function (res) {
+          if (seq !== refreshSeq) return;
+          var lanes = res[0].filter(function (n) { return !!laneByCategory(n); });
+          var note = res[1] ? (res[1].get(NOTE_KEY) || "") : "";
+          $("note").value = note;
+          showDone(lanes.length ? laneByCategory(lanes[0]) : null, note);
         });
+      return;
+    }
+    $("noTriage").hidden = false;
+    $("noTriage").textContent = "Triage ophalen...";
+    var id;
+    try { id = restId(); } catch (e) { $("noTriage").textContent = "Triage ophalen mislukt: " + msg(e); return; }
+    getMessage(id, interactive === true ? true : false).then(function (m) {
+      if (seq !== refreshSeq) return; // selection moved on
+      var lanes = m.categories.filter(function (n) { return !!laneByCategory(n); });
+      var note = m.props[NOTE_KEY] || "";
+      $("note").value = note;
+      showDone(lanes.length ? laneByCategory(lanes[0]) : null, note);
+      renderTriage(parseJson(m.props[TRIAGE_KEY]), parseJson(m.props[ACTION_KEY]));
+    }).catch(function (e) {
+      if (seq !== refreshSeq) return;
+      renderTriage(null, null);
+      if (e && e.code === "LOGIN_REQUIRED") {
+        $("noTriage").textContent = "Meld je eenmalig aan om de triage te zien.";
+        $("signin").hidden = false;
+        return;
       }
-    }).catch(function (e) { renderTriage(null, null); $("noTriage").textContent = "Triage laden mislukt: " + msg(e); });
+      $("noTriage").textContent = e && e.code === "NAA_UNSUPPORTED" ? e.message : "Triage ophalen mislukt: " + msg(e);
+    });
   }
 
   Office.onReady(function (info) {
     renderLanes();
     $("undo").addEventListener("click", undo);
-    // Diagnostic: Office writes a marker so Eva can see under which property name it lands on the server.
-    $("diag").addEventListener("click", function () {
-      loadProps().then(function (p) {
-        p.set("evaPing", new Date().toISOString());
-        return call(function (cb) { p.saveAsync(cb); });
-      }).then(function () { setStatus("Test opgeslagen. Laat EA weten dat je op Test hebt geklikt (id " + String(item().itemId).slice(-12) + ")."); },
-              function (e) { setStatus("Test mislukt: " + msg(e), true); });
-    });
+    $("signin").addEventListener("click", function () { refresh(true); });
     $("triageUndo").addEventListener("click", undoTriageState);
     $("recentUndo").addEventListener("click", undoRecent);
     $("triagePrimary").addEventListener("click", function () {
@@ -618,9 +653,10 @@
         if (!active || busy) return;
         var lane = LANES.filter(function (l) { return l.key === active.getAttribute("data-key"); })[0];
         var note = $("note").value.trim();
-        saveNote(note, lane).then(function (ok) {
-          if (ok) { showDone(lane, note); setStatus("Notitie bewaard."); } else setStatus("De notitie kon niet worden opgeslagen.", true);
-        });
+        saveNote(note, lane).then(function () {
+          showDone(lane, note);
+          setStatus("Notitie bewaard.");
+        }, function (err) { setStatus("De notitie kon niet worden opgeslagen: " + msg(err), true); });
       }, 800);
     });
     if (info.host !== Office.HostType.Outlook) {
@@ -633,10 +669,13 @@
       setBusy(true);
       return;
     }
+    if (!naaSupported()) {
+      setStatus("Deze Outlook-versie ondersteunt geen aanmelden via de add-in (Nested App Authentication). Triage en archiveren werken hier niet.", true);
+    }
     refresh();
     // Pinned pane: follow the selection to the next mail.
     if (Office.EventType && Office.EventType.ItemChanged) {
-      Office.context.mailbox.addHandlerAsync(Office.EventType.ItemChanged, refresh);
+      Office.context.mailbox.addHandlerAsync(Office.EventType.ItemChanged, function () { refresh(); });
     }
   });
 })();

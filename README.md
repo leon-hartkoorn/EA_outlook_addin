@@ -1,6 +1,6 @@
 # EA_outlook_addin
 
-Outlook add-in "Eva: Naar Notion". In a mail, click **Naar Notion** in the ribbon (pinnable; the pane follows the selected mail). The pane shows, top to bottom:
+Outlook add-in "EA Inbox Management". In a mail, click **Naar Notion** in the ribbon (pinnable; the pane follows the selected mail). The pane shows, top to bottom:
 
 1. **Eva triage card** (read mode only): Eva's summary of this mail, a context line, one recommended action (primary button, with reason) and alternatives as chips. Without a triage it shows "Nog geen triage van Eva voor deze mail".
 2. **Lane chips** Sprint 1D, Next day, Sprint 1W, Backlog, On hold: puts category `Notion: Sprint 1 day` / `Notion: Sprint next day` / `Notion: Sprint 1 week` / `Notion: Backlog` / `Notion: On hold/waiting for` on the mail (one lane at a time; master categories created once if missing).
@@ -25,15 +25,24 @@ String {00020329-0002-0000-C000-000000000046} Name cecp-2c2658f7-4faa-450c-9387-
   Action types: `archive` {folderPath, folderLabel}, `notion` {lane: key/label/Notion status, cardTitle}, `draft` {gist}, `fyi`, `none`. `label` is optional (a Dutch default is used).
 - `evaAction` (written by the pane on click), a JSON string `{type, params, label, at}`, together with category `Eva: actie` (purple, Preset8). Eva's poller executes it (`mail_triage.py pending` / `move` / `clear`) and removes both.
 
-Click behaviour:
-- `archive`: first tries a direct EWS move (FindFolder by path under msgfolderroot, UpdateItem IsRead, MoveItem). Works in classic Outlook and Outlook on the web while EWS is available. Shows "Gearchiveerd in ..." with undo (moves back to Postvak IN, restores unread). If EWS is unavailable or fails (new Outlook, EWS retired), it records `evaAction` and shows "Eva verplaatst hem zo".
-- `fyi`: EWS mark read (undo restores), else recorded.
-- `draft`: always recorded; Eva writes the draft with `tools/reply_draft.py`.
+Click behaviour (read mode, all via Microsoft Graph, see below):
+- `archive`: resolves `folderPath` by walking `/me/mailFolders` and `childFolders` (names may contain " / "), marks read, `POST /me/messages/{id}/move`. Shows "Gearchiveerd in ..." with undo (moves back to Postvak IN, restores unread). If the folder is not found or the move fails, it records `evaAction` instead.
+- `fyi`: marks read via Graph (undo restores).
+- `draft`: always recorded; EA writes the draft with `tools/reply_draft.py`.
 - `notion`: same as clicking that lane, note prefilled with `cardTitle`.
 - `none`: nothing is stored.
-- Recorded actions can be undone in the pane (removes `evaAction` and `Eva: actie`).
+- Recorded actions can be undone in the pane (removes `evaAction` and `EA: actie`).
 
-Static HTML/JS/CSS plus Office.js. No secrets, no backend.
+## Graph via Nested App Authentication (since versie 15)
+
+Classic Outlook does not sync Office custom properties to the server and no longer issues EWS tokens to add-ins, so in read mode the pane reads and writes everything through Microsoft Graph:
+
+- Token: MSAL browser (vendored in `vendor/msal-browser.min.js`, v4.30.0 UMD, global `msal`) with `createNestablePublicClientApplication`. App registration `cee9ce67-5476-42a8-b9cb-46d110f60d08`, tenant `650e65a6-7112-4147-9ef8-c7e6ca69613c`, SPA redirect `brk-multihub://leon-hartkoorn.github.io`, scope `Mail.ReadWrite`. Silent on load; a "Aanmelden bij Microsoft" button appears when a one-time sign-in or consent is needed. Requires requirement set `NestedAppAuth 1.1`.
+- Message id: `convertToRestId(itemId, v2_0)`.
+- Lanes, note and recorded actions: read-modify-write of `categories` and the cecp extended property in one `PATCH /me/messages/{id}`. Master categories are still ensured locally with Office.js (colour only).
+- Compose mode has no server id yet, so lanes and note stay on Office.js there.
+
+Static HTML/JS/CSS plus Office.js and the vendored MSAL file. No secrets, no backend.
 
 ## Publish (one time)
 

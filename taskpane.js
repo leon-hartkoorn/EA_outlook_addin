@@ -236,13 +236,16 @@
   }
   // Read Eva's custom properties straight from the server. Classic Outlook in cached mode does not
   // always see properties that Eva wrote via Graph, so this is the fallback when the local copy is empty.
+  var lastEwsDiag = "";
   function ewsCustomProps(id) {
     return ews('<m:GetItem><m:ItemShape><t:BaseShape>IdOnly</t:BaseShape><t:AdditionalProperties>' +
       '<t:ExtendedFieldURI DistinguishedPropertySetId="PublicStrings" PropertyName="cecp-2c2658f7-4faa-450c-9387-4f9ccf079dbb" PropertyType="String"/>' +
       '</t:AdditionalProperties></m:ItemShape><m:ItemIds><t:ItemId Id="' + xmlEsc(id) + '"/></m:ItemIds></m:GetItem>').then(function (doc) {
       var v = doc.getElementsByTagNameNS(T_NS, "Value")[0];
+      var xml = new XMLSerializer().serializeToString(doc);
+      lastEwsDiag = "ext:" + (xml.indexOf("ExtendedProperty") >= 0 ? "ja" : "nee") + " len:" + xml.length + " id:" + String(id).slice(-10);
       if (!v) return null;
-      try { return JSON.parse(v.textContent); } catch (e) { return null; }
+      try { return JSON.parse(v.textContent); } catch (e) { lastEwsDiag += " parse-fout"; return null; }
     });
   }
   function ewsIsRead(id) {
@@ -546,7 +549,7 @@
             renderTriage(t2, parseJson(obj[ACTION_KEY]));
             if (!note && obj[NOTE_KEY]) { $("note").value = obj[NOTE_KEY]; showDone(lane, obj[NOTE_KEY]); }
           } else {
-            $("noTriage").textContent = "Nog geen triage voor deze mail (" + local + "; server: " + (obj ? Object.keys(obj).join(", ") || "leeg" : "geen") + ")";
+            $("noTriage").textContent = "Nog geen triage voor deze mail (" + local + "; server: " + (obj ? Object.keys(obj).join(", ") || "leeg" : "geen") + "; " + lastEwsDiag + ")";
           }
         }).catch(function (e) {
           $("noTriage").textContent = "Nog geen triage voor deze mail (" + local + "; server-fout: " + msg(e) + ")";

@@ -575,6 +575,14 @@
           $("noTriage").textContent = "Nog geen triage voor deze mail (" + Object.keys(store).length + " mails in de triage)";
         }).catch(function (e) {
           $("noTriage").textContent = "Nog geen triage voor deze mail (triage niet bereikbaar: " + msg(e) + ")";
+          // Diagnostic: which top-level folders does EWS see from here?
+          ews('<m:FindFolder Traversal="Shallow"><m:FolderShape><t:BaseShape>Default</t:BaseShape></m:FolderShape>' +
+            '<m:IndexedPageFolderView MaxEntriesReturned="60" Offset="0" BasePoint="Beginning"/>' +
+            '<m:ParentFolderIds><t:DistinguishedFolderId Id="msgfolderroot"/></m:ParentFolderIds></m:FindFolder>').then(function (d) {
+            var n = d.getElementsByTagNameNS(T_NS, "DisplayName"), names = [];
+            for (var i = 0; i < n.length; i++) names.push(n[i].textContent);
+            $("noTriage").textContent += " | mappen: " + names.join(", ");
+          }, function (e2) { $("noTriage").textContent += " | mappen-fout: " + msg(e2); });
         });
       }
     }).catch(function (e) { renderTriage(null, null); $("noTriage").textContent = "Triage laden mislukt: " + msg(e); });

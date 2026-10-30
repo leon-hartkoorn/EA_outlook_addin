@@ -5,11 +5,11 @@
   "use strict";
 
   var LANES = [
-    // Same order, names and colours as Leon's Notion board (Status select).
-    { key: "backlog", label: "Backlog",   sub: "ooit, nog geen sprint", category: "Notion: Backlog",             color: "Preset12", tone: "default" },
-    { key: "week",    label: "Sprint 1W", sub: "deze week",             category: "Notion: Sprint 1 week",       color: "Preset7",  tone: "blue" },
-    { key: "nextday", label: "Next day",  sub: "morgen",                category: "Notion: Sprint next day",     color: "Preset7",  tone: "blue" },
+    // Notion names and colours; order by how often Leon uses them.
     { key: "today",   label: "Sprint 1D", sub: "vandaag",               category: "Notion: Sprint 1 day",        color: "Preset0",  tone: "red" },
+    { key: "nextday", label: "Next day",  sub: "morgen",                category: "Notion: Sprint next day",     color: "Preset7",  tone: "blue" },
+    { key: "week",    label: "Sprint 1W", sub: "deze week",             category: "Notion: Sprint 1 week",       color: "Preset7",  tone: "blue" },
+    { key: "backlog", label: "Backlog",   sub: "ooit, nog geen sprint", category: "Notion: Backlog",             color: "Preset12", tone: "default" },
     { key: "onhold",  label: "On hold",   sub: "wacht op iemand anders", category: "Notion: On hold/waiting for", color: "Preset7",  tone: "blue" }
   ];
   var NOTE_KEY = "evaNote";
@@ -200,6 +200,20 @@
   Office.onReady(function (info) {
     renderLanes();
     $("undo").addEventListener("click", undo);
+    // The note sits below the lanes, so it is also saved when typed after picking a lane.
+    var noteTimer = null;
+    $("note").addEventListener("input", function () {
+      clearTimeout(noteTimer);
+      noteTimer = setTimeout(function () {
+        var active = document.querySelector(".lane.active");
+        if (!active || busy) return;
+        var lane = LANES.filter(function (l) { return l.key === active.getAttribute("data-key"); })[0];
+        var note = $("note").value.trim();
+        saveNote(note, lane).then(function (ok) {
+          if (ok) { showDone(lane, note); setStatus("Notitie bewaard."); } else setStatus("De notitie kon niet worden opgeslagen.", true);
+        });
+      }, 800);
+    });
     if (info.host !== Office.HostType.Outlook) {
       setStatus("Open dit paneel vanuit Outlook.", true);
       setBusy(true);

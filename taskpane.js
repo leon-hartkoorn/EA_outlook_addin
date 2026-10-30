@@ -234,6 +234,17 @@
     });
     return chain.then(function (id) { folderCache[path] = id; return id; });
   }
+  // Read Eva's custom properties straight from the server. Classic Outlook in cached mode does not
+  // always see properties that Eva wrote via Graph, so this is the fallback when the local copy is empty.
+  function ewsCustomProps(id) {
+    return ews('<m:GetItem><m:ItemShape><t:BaseShape>IdOnly</t:BaseShape><t:AdditionalProperties>' +
+      '<t:ExtendedFieldURI DistinguishedPropertySetId="PublicStrings" PropertyName="cecp-2c2658f7-4faa-450c-9387-4f9ccf079dbb" PropertyType="String"/>' +
+      '</t:AdditionalProperties></m:ItemShape><m:ItemIds><t:ItemId Id="' + xmlEsc(id) + '"/></m:ItemIds></m:GetItem>').then(function (doc) {
+      var v = doc.getElementsByTagNameNS(T_NS, "Value")[0];
+      if (!v) return null;
+      try { return JSON.parse(v.textContent); } catch (e) { return null; }
+    });
+  }
   function ewsIsRead(id) {
     return ews('<m:GetItem><m:ItemShape><t:BaseShape>IdOnly</t:BaseShape><t:AdditionalProperties>' +
       '<t:FieldURI FieldURI="message:IsRead"/></t:AdditionalProperties></m:ItemShape>' +
@@ -520,10 +531,24 @@
       var tri = p ? parseJson(p.get(TRIAGE_KEY)) : null;
       renderTriage(tri, p ? parseJson(p.get(ACTION_KEY)) : null);
       if (!tri) {
-        // Small diagnostic so Eva can see why no triage shows.
         var keys = [];
         try { keys = Object.keys((p && p.getAll && p.getAll()) || {}); } catch (e) {}
-        $("noTriage").textContent = "Nog geen triage van Eva voor deze mail" + (propsErr ? " (fout: " + propsErr + ")" : " (velden: " + (keys.join(", ") || "geen") + ")");
+        var local = propsErr ? "fout: " + propsErr : "velden: " + (keys.join(", ") || "geen");
+        $("noTriage").textContent = "Triage ophalen...";
+        if (!ewsAvailable()) { $("noTriage").textContent = "Nog geen triage van Eva voor deze mail (" + local + "; server niet bereikbaar)"; return; }
+        var forId = item().itemId;
+        ewsCustomProps(forId).then(function (obj) {
+          if (!item() || item().itemId !== forId) return; // selection moved on
+          var t2 = obj ? parseJson(obj[TRIAGE_KEY]) : null;
+          if (t2) {
+            renderTriage(t2, parseJson(obj[ACTION_KEY]));
+            if (!note && obj[NOTE_KEY]) { $("note").value = obj[NOTE_KEY]; showDone(lane, obj[NOTE_KEY]); }
+          } else {
+            $("noTriage").textContent = "Nog geen triage van Eva voor deze mail (" + local + "; server: " + (obj ? Object.keys(obj).join(", ") || "leeg" : "geen") + ")";
+          }
+        }).catch(function (e) {
+          $("noTriage").textContent = "Nog geen triage van Eva voor deze mail (" + local + "; server-fout: " + msg(e) + ")";
+        });
       }
     }).catch(function (e) { renderTriage(null, null); $("noTriage").textContent = "Triage laden mislukt: " + msg(e); });
   }

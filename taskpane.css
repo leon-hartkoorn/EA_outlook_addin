@@ -250,3 +250,7 @@ html, body { font-size: 13.5px; }
 .opt-own { display: flex; flex-direction: column; gap: 4px; margin-top: 2px; }
 .opt-own textarea { min-height: 40px; font-size: 12.5px; }
 .opt-own .btn-alt { align-self: flex-start; }
+
+.draft-box { display: flex; flex-direction: column; gap: 4px; margin: 0 0 10px; }
+.draft-box textarea { min-height: 40px; font-size: 12.5px; }
+.draft-box .btn-alt { align-self: flex-start; }

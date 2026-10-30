@@ -499,6 +499,7 @@
     currentTriage = t;
     var rm = readMode(); // triage only applies to a received mail
     $("triage").hidden = !t || !rm;
+    $("draftBox").hidden = !rm;
     $("noTriage").hidden = !!t || !rm;
     $("noTriage").textContent = "Nog geen triage voor deze mail";
     showTriageState(null);
@@ -547,21 +548,6 @@
       b.addEventListener("click", function () { runAction({ type: "draft", option: o.key, gist: o.gist, label: "Draft " + o.key + " (" + o.label + ")" }); });
       opts.appendChild(b);
     });
-    // Own direction: Leon types what the reply should say, EA writes the draft.
-    if (rec.type === "draft") {
-      var wrap = document.createElement("div");
-      wrap.className = "opt-own";
-      wrap.innerHTML = '<textarea id="ownGist" rows="2" placeholder="Eigen richting, bijv.: klinkt interessant, vraag naar fees en talen"></textarea>' +
-        '<button type="button" class="btn-alt" id="ownGo">Draft met mijn richting</button>';
-      opts.appendChild(wrap);
-      opts.hidden = false;
-      $("triagePrimary").hidden = true;
-      wrap.querySelector("#ownGo").addEventListener("click", function () {
-        var g = wrap.querySelector("#ownGist").value.trim();
-        if (!g) { setStatus("Typ eerst kort wat het antwoord moet zeggen.", true); return; }
-        runAction({ type: "draft", option: "eigen", gist: g, label: "Draft met eigen richting" });
-      });
-    }
     var alts = $("triageAlts");
     alts.innerHTML = "";
     var list = (t.alternatives || []).slice();
@@ -682,6 +668,13 @@
 
   Office.onReady(function (info) {
     renderLanes();
+    // Draft box: always available on a received mail. Leon types the gist, EA writes the draft with full context.
+    $("ownGo").addEventListener("click", function () {
+      var g = $("ownGist").value.trim();
+      if (!g) { setStatus("Typ eerst kort wat het antwoord moet zeggen.", true); return; }
+      runAction({ type: "draft", option: "eigen", gist: g, label: "Draft met eigen richting" });
+      $("ownGist").value = "";
+    });
     $("undo").addEventListener("click", undo);
     $("signin").addEventListener("click", function () { refresh(true); });
     $("triageUndo").addEventListener("click", undoTriageState);

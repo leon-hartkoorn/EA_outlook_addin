@@ -6,7 +6,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=Edge">
   <title>EA Inbox Management</title>
   <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
-  <link rel="stylesheet" href="taskpane.css?v=17">
+  <link rel="stylesheet" href="taskpane.css?v=18">
 </head>
 <body>
   <main class="pane">
@@ -41,6 +41,11 @@
       </div>
     </section>
     <p id="noTriage" class="no-triage" hidden>Nog geen triage voor deze mail</p>
+    <section id="draftBox" class="draft-box" hidden>
+      <h3 class="tsec-h">Antwoord laten schrijven</h3>
+      <textarea id="ownGist" rows="2" placeholder="Kort wat het antwoord moet zeggen, bijv.: klinkt interessant, vraag naar fees en talen"></textarea>
+      <button type="button" class="btn-alt" id="ownGo">Maak draft</button>
+    </section>
     <button type="button" id="signin" class="btn-alt" hidden>Aanmelden bij Microsoft</button>
 
     <section id="done" class="done" hidden>
@@ -66,9 +71,9 @@
     </label>
 
     <p id="status" class="status" role="status" aria-live="polite"></p>
-    <p class="ver">versie 17</p>
+    <p class="ver">versie 18</p>
   </main>
-  <script src="vendor/msal-browser.min.js?v=17"></script>
-  <script src="taskpane.js?v=17"></script>
+  <script src="vendor/msal-browser.min.js?v=18"></script>
+  <script src="taskpane.js?v=18"></script>
 </body>
 </html>

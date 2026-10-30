@@ -6,12 +6,12 @@
   "use strict";
 
   var LANES = [
-    // Notion names and colours; order by how often Leon uses them.
-    { key: "today",   label: "Sprint 1D", sub: "vandaag",               category: "Notion: Sprint 1 day",        color: "Preset0",  tone: "red" },
-    { key: "nextday", label: "Next day",  sub: "morgen",                category: "Notion: Sprint next day",     color: "Preset7",  tone: "blue" },
-    { key: "week",    label: "Sprint 1W", sub: "deze week",             category: "Notion: Sprint 1 week",       color: "Preset7",  tone: "blue" },
-    { key: "backlog", label: "Backlog",   sub: "ooit, nog geen sprint", category: "Notion: Backlog",             color: "Preset12", tone: "default" },
-    { key: "onhold",  label: "On hold",   sub: "wacht op iemand anders", category: "Notion: On hold/waiting for", color: "Preset7",  tone: "blue" }
+    // Same order, names and colours as Leon's Notion board.
+    { key: "backlog", label: "Backlog",     category: "Notion: Backlog",             color: "Preset12", tone: "default" },
+    { key: "week",    label: "Sprint 1W",   category: "Notion: Sprint 1 week",       color: "Preset7",  tone: "blue" },
+    { key: "nextday", label: "Next day",    category: "Notion: Sprint next day",     color: "Preset7",  tone: "blue" },
+    { key: "today",   label: "Sprint 1D",   category: "Notion: Sprint 1 day",        color: "Preset0",  tone: "red" },
+    { key: "onhold",  label: "Waiting for", category: "Notion: On hold/waiting for", color: "Preset7",  tone: "blue" }
   ];
   var NOTE_KEY = "evaNote";
   var LANE_KEY = "evaLane";
@@ -410,7 +410,17 @@
     $("triageSummary").textContent = t.summary || "";
     $("triageContext").hidden = !t.context;
     $("triageContext").textContent = t.context || "";
-    var rec = t.recommend || { type: "none" };
+    // Kind tag: FYI / actie voor iemand anders / actie voor jou, readable at a glance.
+    var KINDS = { fyi: "FYI", other: "Actie voor ander", me: "Actie voor jou" };
+    var kt = $("triageKind");
+    kt.hidden = !KINDS[t.kind];
+    kt.textContent = KINDS[t.kind] || "";
+    kt.setAttribute("data-kind", t.kind || "");
+    // Notion lanes live below the card, so the card itself never offers a Notion action.
+    var notNotion = function (a) { return a && a.type !== "notion"; };
+    var rec = notNotion(t.recommend) ? t.recommend : ((t.alternatives || []).filter(notNotion)[0] || { type: "none" });
+    t = Object.assign({}, t, { recommend: rec, alternatives: (t.alternatives || []).filter(function (a) { return notNotion(a) && a !== rec; }) });
+    currentTriage = t;
     $("triagePrimary").textContent = actionLabel(rec);
     $("triageReason").hidden = !rec.reason;
     $("triageReason").textContent = rec.reason || "";

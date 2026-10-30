@@ -515,6 +515,7 @@
     currentTriage = null;
     $("triage").hidden = true;
     $("noTriage").hidden = true;
+    $("diag").hidden = true;
     if (!item()) { loadSubject(); return; }
     loadSubject();
     // Load categories and custom properties independently: one failing must not hide the triage.
@@ -535,6 +536,7 @@
         try { keys = Object.keys((p && p.getAll && p.getAll()) || {}); } catch (e) {}
         var local = propsErr ? "fout: " + propsErr : "velden: " + (keys.join(", ") || "geen");
         $("noTriage").textContent = "Triage ophalen...";
+        $("diag").hidden = false;
         if (!ewsAvailable()) { $("noTriage").textContent = "Nog geen triage van Eva voor deze mail (" + local + "; server niet bereikbaar)"; return; }
         var forId = item().itemId;
         ewsCustomProps(forId).then(function (obj) {
@@ -556,6 +558,14 @@
   Office.onReady(function (info) {
     renderLanes();
     $("undo").addEventListener("click", undo);
+    // Diagnostic: Office writes a marker so Eva can see under which property name it lands on the server.
+    $("diag").addEventListener("click", function () {
+      loadProps().then(function (p) {
+        p.set("evaPing", new Date().toISOString());
+        return call(function (cb) { p.saveAsync(cb); });
+      }).then(function () { setStatus("Test opgeslagen. Laat Eva weten dat je op Test hebt geklikt (id " + String(item().itemId).slice(-12) + ")."); },
+              function (e) { setStatus("Test mislukt: " + msg(e), true); });
+    });
     $("triageUndo").addEventListener("click", undoTriageState);
     $("recentUndo").addEventListener("click", undoRecent);
     $("triagePrimary").addEventListener("click", function () {

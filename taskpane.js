@@ -248,6 +248,30 @@
       try { return JSON.parse(v.textContent); } catch (e) { lastEwsDiag += " parse-fout"; return null; }
     });
   }
+  // Eva publishes all triage as JSON in one message in the folder "EA Triage" (tools/triage_store.py).
+  // Read it via EWS from the server: classic Outlook does not sync Graph-written custom properties.
+  var storeCache = null, storeAt = 0;
+  function loadStore() {
+    if (storeCache && Date.now() - storeAt < 180000) return Promise.resolve(storeCache);
+    return findFolderId("EA Triage").then(function (fid) {
+      return ews('<m:FindItem Traversal="Shallow"><m:ItemShape><t:BaseShape>IdOnly</t:BaseShape></m:ItemShape>' +
+        '<m:IndexedPageItemView MaxEntriesReturned="1" Offset="0" BasePoint="Beginning"/>' +
+        '<m:SortOrder><t:FieldOrder Order="Descending"><t:FieldURI FieldURI="item:LastModifiedTime"/></t:FieldOrder></m:SortOrder>' +
+        '<m:ParentFolderIds><t:FolderId Id="' + xmlEsc(fid) + '"/></m:ParentFolderIds></m:FindItem>');
+    }).then(function (doc) {
+      var it = doc.getElementsByTagNameNS(T_NS, "ItemId")[0];
+      if (!it) return {};
+      return ews('<m:GetItem><m:ItemShape><t:BaseShape>IdOnly</t:BaseShape><t:BodyType>Text</t:BodyType>' +
+        '<t:AdditionalProperties><t:FieldURI FieldURI="item:Body"/></t:AdditionalProperties></m:ItemShape>' +
+        '<m:ItemIds><t:ItemId Id="' + xmlEsc(it.getAttribute("Id")) + '"/></m:ItemIds></m:GetItem>').then(function (d2) {
+        var b = d2.getElementsByTagNameNS(T_NS, "Body")[0];
+        try { storeCache = JSON.parse(b ? b.textContent : "{}"); } catch (e) { storeCache = {}; }
+        storeAt = Date.now();
+        return storeCache;
+      });
+    });
+  }
+
   function ewsIsRead(id) {
     return ews('<m:GetItem><m:ItemShape><t:BaseShape>IdOnly</t:BaseShape><t:AdditionalProperties>' +
       '<t:FieldURI FieldURI="message:IsRead"/></t:AdditionalProperties></m:ItemShape>' +
@@ -542,17 +566,15 @@
         $("diag").hidden = false;
         if (!ewsAvailable()) { $("noTriage").textContent = "Nog geen triage voor deze mail (" + local + "; server niet bereikbaar)"; return; }
         var forId = item().itemId;
-        ewsCustomProps(forId).then(function (obj) {
+        var imid = String(item().internetMessageId || "");
+        loadStore().then(function (store) {
           if (!item() || item().itemId !== forId) return; // selection moved on
-          var t2 = obj ? parseJson(obj[TRIAGE_KEY]) : null;
-          if (t2) {
-            renderTriage(t2, parseJson(obj[ACTION_KEY]));
-            if (!note && obj[NOTE_KEY]) { $("note").value = obj[NOTE_KEY]; showDone(lane, obj[NOTE_KEY]); }
-          } else {
-            $("noTriage").textContent = "Nog geen triage voor deze mail (" + local + "; server: " + (obj ? Object.keys(obj).join(", ") || "leeg" : "geen") + "; " + lastEwsDiag + ")";
-          }
+          var bare = imid.replace(/^<|>$/g, "");
+          var t2 = store[imid] || store["<" + bare + ">"] || store[bare] || null;
+          if (t2) { renderTriage(parseJson(t2), p ? parseJson(p.get(ACTION_KEY)) : null); return; }
+          $("noTriage").textContent = "Nog geen triage voor deze mail (" + Object.keys(store).length + " mails in de triage)";
         }).catch(function (e) {
-          $("noTriage").textContent = "Nog geen triage voor deze mail (" + local + "; server-fout: " + msg(e) + ")";
+          $("noTriage").textContent = "Nog geen triage voor deze mail (triage niet bereikbaar: " + msg(e) + ")";
         });
       }
     }).catch(function (e) { renderTriage(null, null); $("noTriage").textContent = "Triage laden mislukt: " + msg(e); });

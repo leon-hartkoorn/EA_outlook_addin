@@ -230,3 +230,19 @@ textarea { min-height: 36px; padding: 6px 8px; font-size: 12px; }
 .ver { margin: 8px 0 0; font-size: 10px; color: var(--muted); text-align: right; }
 
 #signin { margin: 0 0 8px; }
+
+
+/* v16: readable structure, nothing cut off */
+html, body { font-size: 13.5px; }
+.triage-headline { margin: 2px 0 6px; font-size: 13.5px; font-weight: 600; line-height: 1.35; word-break: break-word; }
+.tsec { margin: 0 0 6px; }
+.tsec-h { margin: 6px 0 2px; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.tsec ul { margin: 0; padding-left: 16px; }
+.tsec li { font-size: 12.5px; line-height: 1.4; margin: 1px 0; word-break: break-word; }
+.triage-reason { white-space: normal; }
+.btn-primary, .btn-alt { white-space: normal; text-overflow: clip; text-align: left; }
+.triage-options { display: flex; flex-direction: column; gap: 4px; margin: 2px 0 6px; }
+.opt { display: block; width: 100%; text-align: left; padding: 6px 8px; border: 1px solid var(--purple-line); border-radius: 6px; background: #fff; font: inherit; font-size: 12.5px; color: var(--text); cursor: pointer; }
+.opt:hover { background: var(--purple-bg); }
+.opt b { display: block; color: var(--purple-fg); font-size: 12.5px; }
+.opt span { display: block; color: var(--text); line-height: 1.35; }

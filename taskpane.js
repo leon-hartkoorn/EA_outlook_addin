@@ -491,6 +491,10 @@
       .then(function () { setBusy(false); });
   }
 
+  function rich(s) {
+    return String(s || "").replace(/[&<>]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]; }).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+  }
+
   function renderTriage(t, action) {
     currentTriage = t;
     var rm = readMode(); // triage only applies to a received mail
@@ -500,9 +504,21 @@
     showTriageState(null);
     if (!t) return;
     $("triageAt").textContent = formatAt(t.at);
-    $("triageSummary").textContent = t.summary || "";
-    $("triageContext").hidden = !t.context;
-    $("triageContext").textContent = t.context || "";
+    // Pyramid layout: headline first, then short sections with bullets. **text** renders bold.
+    $("triageHeadline").innerHTML = rich(t.headline || t.summary || "");
+    var body = $("triageBody");
+    body.innerHTML = "";
+    var secs = [["Situatie", t.situation], ["Wat speelt", t.complication]];
+    if (!t.situation && !t.complication) secs = [["Context", t.context ? [t.context] : null]];
+    secs.forEach(function (s) {
+      var items = s[1];
+      if (!items || !items.length) return;
+      if (!Array.isArray(items)) items = [items];
+      var d = document.createElement("div");
+      d.className = "tsec";
+      d.innerHTML = '<h3 class="tsec-h">' + s[0] + '</h3><ul>' + items.map(function (x) { return "<li>" + rich(x) + "</li>"; }).join("") + "</ul>";
+      body.appendChild(d);
+    });
     // Kind tag: FYI / actie voor iemand anders / actie voor jou, readable at a glance.
     var KINDS = { fyi: "FYI", other: "Actie voor ander", me: "Actie voor jou" };
     var kt = $("triageKind");
@@ -516,7 +532,21 @@
     currentTriage = t;
     $("triagePrimary").textContent = actionLabel(rec);
     $("triageReason").hidden = !rec.reason;
-    $("triageReason").textContent = rec.reason || "";
+    $("triageReason").innerHTML = rich(rec.reason || "");
+    // Reply options (A kort, B warm, C afhouden): each is its own button with the gist visible.
+    var opts = $("triageOptions");
+    opts.innerHTML = "";
+    var hasOpts = rec.type === "draft" && rec.options && rec.options.length;
+    opts.hidden = !hasOpts;
+    $("triagePrimary").hidden = !!hasOpts;
+    if (hasOpts) rec.options.forEach(function (o) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "opt";
+      b.innerHTML = "<b>" + rich(o.key + ". " + o.label) + "</b><span>" + rich(o.gist) + "</span>";
+      b.addEventListener("click", function () { runAction({ type: "draft", option: o.key, gist: o.gist, label: "Draft " + o.key + " (" + o.label + ")" }); });
+      opts.appendChild(b);
+    });
     var alts = $("triageAlts");
     alts.innerHTML = "";
     var list = (t.alternatives || []).slice();

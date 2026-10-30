@@ -6,7 +6,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=Edge">
   <title>EA Inbox Management</title>
   <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
-  <link rel="stylesheet" href="taskpane.css?v=15">
+  <link rel="stylesheet" href="taskpane.css?v=16">
 </head>
 <body>
   <main class="pane">
@@ -26,8 +26,10 @@
         <span class="eva-badge" id="triageTitle">EA</span>
         <span id="triageAt" class="triage-at"></span>
       </div>
-      <p id="triageSummary" class="triage-summary"></p>
-      <p id="triageContext" class="triage-context" hidden></p>
+      <p id="triageHeadline" class="triage-headline"></p>
+      <div id="triageBody"></div>
+      <h3 class="tsec-h">Voorstel</h3>
+      <div id="triageOptions" class="triage-options" hidden></div>
       <div id="triageActions">
         <button type="button" id="triagePrimary" class="btn-primary"></button>
         <p id="triageReason" class="triage-reason" hidden></p>
@@ -64,9 +66,9 @@
     </label>
 
     <p id="status" class="status" role="status" aria-live="polite"></p>
-    <p class="ver">versie 15</p>
+    <p class="ver">versie 16</p>
   </main>
-  <script src="vendor/msal-browser.min.js?v=15"></script>
-  <script src="taskpane.js?v=15"></script>
+  <script src="vendor/msal-browser.min.js?v=16"></script>
+  <script src="taskpane.js?v=16"></script>
 </body>
 </html>

@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+           xmlns:mailappor="http://schemas.microsoft.com/office/mailappversionoverrides/1.0"
+           xsi:type="MailApp">
+  <Id>2c2658f7-4faa-450c-9387-4f9ccf079dbb</Id>
+  <Version>1.0.0.0</Version>
+  <ProviderName>Lexar Partners</ProviderName>
+  <DefaultLocale>nl-NL</DefaultLocale>
+  <DisplayName DefaultValue="Eva: Naar Notion"/>
+  <Description DefaultValue="Zet een mail met een klik klaar voor Eva als Notion-taak (Vandaag, Volgende dag, Deze week of Backlog)."/>
+  <IconUrl DefaultValue="https://leon-hartkoorn.github.io/eva-outlook-addin/assets/icon-64.png"/>
+  <HighResolutionIconUrl DefaultValue="https://leon-hartkoorn.github.io/eva-outlook-addin/assets/icon-128.png"/>
+  <SupportUrl DefaultValue="https://leon-hartkoorn.github.io/eva-outlook-addin/"/>
+  <AppDomains>
+    <AppDomain>https://leon-hartkoorn.github.io</AppDomain>
+  </AppDomains>
+  <Hosts>
+    <Host Name="Mailbox"/>
+  </Hosts>
+  <Requirements>
+    <Sets>
+      <Set Name="Mailbox" MinVersion="1.1"/>
+    </Sets>
+  </Requirements>
+  <FormSettings>
+    <Form xsi:type="ItemRead">
+      <DesktopSettings>
+        <SourceLocation DefaultValue="https://leon-hartkoorn.github.io/eva-outlook-addin/taskpane.html"/>
+        <RequestedHeight>250</RequestedHeight>
+      </DesktopSettings>
+    </Form>
+    <Form xsi:type="ItemEdit">
+      <DesktopSettings>
+        <SourceLocation DefaultValue="https://leon-hartkoorn.github.io/eva-outlook-addin/taskpane.html"/>
+      </DesktopSettings>
+    </Form>
+  </FormSettings>
+  <Permissions>ReadWriteMailbox</Permissions>
+  <Rule xsi:type="RuleCollection" Mode="Or">
+    <Rule xsi:type="ItemIs" ItemType="Message" FormType="Read"/>
+    <Rule xsi:type="ItemIs" ItemType="Message" FormType="Edit"/>
+  </Rule>
+  <DisableEntityHighlighting>false</DisableEntityHighlighting>
+
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/mailappversionoverrides" xsi:type="VersionOverridesV1_0">
+    <Requirements>
+      <bt:Sets DefaultMinVersion="1.8">
+        <bt:Set Name="Mailbox"/>
+      </bt:Sets>
+    </Requirements>
+    <Hosts>
+      <Host xsi:type="MailHost">
+        <DesktopFormFactor>
+          <ExtensionPoint xsi:type="MessageReadCommandSurface">
+            <OfficeTab id="TabDefault">
+              <Group id="evaReadGroup">
+                <Label resid="groupLabel"/>
+                <Control xsi:type="Button" id="evaReadButton">
+                  <Label resid="buttonLabel"/>
+                  <Supertip>
+                    <Title resid="buttonLabel"/>
+                    <Description resid="buttonTip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="icon16"/>
+                    <bt:Image size="32" resid="icon32"/>
+                    <bt:Image size="80" resid="icon80"/>
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <SourceLocation resid="taskpaneUrl"/>
+                  </Action>
+                </Control>
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+          <ExtensionPoint xsi:type="MessageComposeCommandSurface">
+            <OfficeTab id="TabDefault">
+              <Group id="evaComposeGroup">
+                <Label resid="groupLabel"/>
+                <Control xsi:type="Button" id="evaComposeButton">
+                  <Label resid="buttonLabel"/>
+                  <Supertip>
+                    <Title resid="buttonLabel"/>
+                    <Description resid="buttonTip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="icon16"/>
+                    <bt:Image size="32" resid="icon32"/>
+                    <bt:Image size="80" resid="icon80"/>
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <SourceLocation resid="taskpaneUrl"/>
+                  </Action>
+                </Control>
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+        </DesktopFormFactor>
+      </Host>
+    </Hosts>
+    <Resources>
+      <bt:Images>
+        <bt:Image id="icon16" DefaultValue="https://leon-hartkoorn.github.io/eva-outlook-addin/assets/icon-16.png"/>
+        <bt:Image id="icon32" DefaultValue="https://leon-hartkoorn.github.io/eva-outlook-addin/assets/icon-32.png"/>
+        <bt:Image id="icon80" DefaultValue="https://leon-hartkoorn.github.io/eva-outlook-addin/assets/icon-80.png"/>
+      </bt:Images>
+      <bt:Urls>
+        <bt:Url id="taskpaneUrl" DefaultValue="https://leon-hartkoorn.github.io/eva-outlook-addin/taskpane.html"/>
+      </bt:Urls>
+      <bt:ShortStrings>
+        <bt:String id="groupLabel" DefaultValue="Eva"/>
+        <bt:String id="buttonLabel" DefaultValue="Naar Notion"/>
+      </bt:ShortStrings>
+      <bt:LongStrings>
+        <bt:String id="buttonTip" DefaultValue="Zet deze mail klaar voor Eva als Notion-taak."/>
+      </bt:LongStrings>
+    </Resources>
+
+    <VersionOverrides xmlns="http://schemas.microsoft.com/office/mailappversionoverrides/1.1" xsi:type="VersionOverridesV1_1">
+      <Requirements>
+        <bt:Sets DefaultMinVersion="1.8">
+          <bt:Set Name="Mailbox"/>
+        </bt:Sets>
+      </Requirements>
+      <Hosts>
+        <Host xsi:type="MailHost">
+          <DesktopFormFactor>
+            <ExtensionPoint xsi:type="MessageReadCommandSurface">
+              <OfficeTab id="TabDefault">
+                <Group id="evaReadGroup">
+                  <Label resid="groupLabel"/>
+                  <Control xsi:type="Button" id="evaReadButton">
+                    <Label resid="buttonLabel"/>
+                    <Supertip>
+                      <Title resid="buttonLabel"/>
+                      <Description resid="buttonTip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="icon16"/>
+                      <bt:Image size="32" resid="icon32"/>
+                      <bt:Image size="80" resid="icon80"/>
+                    </Icon>
+                    <Action xsi:type="ShowTaskpane">
+                      <SourceLocation resid="taskpaneUrl"/>
+                      <SupportsPinning>true</SupportsPinning>
+                    </Action>
+                  </Control>
+                </Group>
+              </OfficeTab>
+            </ExtensionPoint>
+            <ExtensionPoint xsi:type="MessageComposeCommandSurface">
+              <OfficeTab id="TabDefault">
+                <Group id="evaComposeGroup">
+                  <Label resid="groupLabel"/>
+                  <Control xsi:type="Button" id="evaComposeButton">
+                    <Label resid="buttonLabel"/>
+                    <Supertip>
+                      <Title resid="buttonLabel"/>
+                      <Description resid="buttonTip"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="icon16"/>
+                      <bt:Image size="32" resid="icon32"/>
+                      <bt:Image size="80" resid="icon80"/>
+                    </Icon>
+                    <Action xsi:type="ShowTaskpane">
+                      <SourceLocation resid="taskpaneUrl"/>
+                    </Action>
+                  </Control>
+                </Group>
+              </OfficeTab>
+            </ExtensionPoint>
+          </DesktopFormFactor>
+        </Host>
+      </Hosts>
+      <Resources>
+        <bt:Images>
+          <bt:Image id="icon16" DefaultValue="https://leon-hartkoorn.github.io/eva-outlook-addin/assets/icon-16.png"/>
+          <bt:Image id="icon32" DefaultValue="https://leon-hartkoorn.github.io/eva-outlook-addin/assets/icon-32.png"/>
+          <bt:Image id="icon80" DefaultValue="https://leon-hartkoorn.github.io/eva-outlook-addin/assets/icon-80.png"/>
+        </bt:Images>
+        <bt:Urls>
+          <bt:Url id="taskpaneUrl" DefaultValue="https://leon-hartkoorn.github.io/eva-outlook-addin/taskpane.html"/>
+        </bt:Urls>
+        <bt:ShortStrings>
+          <bt:String id="groupLabel" DefaultValue="Eva"/>
+          <bt:String id="buttonLabel" DefaultValue="Naar Notion"/>
+        </bt:ShortStrings>
+        <bt:LongStrings>
+          <bt:String id="buttonTip" DefaultValue="Zet deze mail klaar voor Eva als Notion-taak."/>
+        </bt:LongStrings>
+      </Resources>
+    </VersionOverrides>
+  </VersionOverrides>
+</OfficeApp>

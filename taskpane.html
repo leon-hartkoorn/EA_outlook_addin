@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="X-UA-Compatible" content="IE=Edge">
-  <title>Naar Notion</title>
+  <title>EA Inbox Management</title>
   <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
-  <link rel="stylesheet" href="taskpane.css?v=9">
+  <link rel="stylesheet" href="taskpane.css?v=10">
 </head>
 <body>
   <main class="pane">
@@ -23,7 +23,7 @@
     <section id="triage" class="triage" hidden aria-labelledby="triageTitle">
       <div class="triage-head">
         <span class="kind-tag" id="triageKind" hidden></span>
-        <span class="eva-badge" id="triageTitle">Eva</span>
+        <span class="eva-badge" id="triageTitle">EA</span>
         <span id="triageAt" class="triage-at"></span>
       </div>
       <p id="triageSummary" class="triage-summary"></p>
@@ -38,8 +38,8 @@
         <button type="button" id="triageUndo" class="undo">Ongedaan maken</button>
       </div>
     </section>
-    <p id="noTriage" class="no-triage" hidden>Nog geen triage van Eva voor deze mail</p>
-    <button type="button" id="diag" class="btn-alt" hidden>Test voor Eva</button>
+    <p id="noTriage" class="no-triage" hidden>Nog geen triage voor deze mail</p>
+    <button type="button" id="diag" class="btn-alt" hidden>Test</button>
 
     <section id="done" class="done" hidden>
       <div class="done-row">
@@ -47,7 +47,7 @@
           <svg viewBox="0 0 20 20" width="16" height="16"><path d="M5 10.5l3.2 3.2L15 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </span>
         <div>
-          <strong id="doneText">Staat klaar voor Eva</strong>
+          <strong id="doneText">Staat klaar voor EA</strong>
           <p id="doneNote" class="done-note" hidden></p>
         </div>
       </div>
@@ -55,17 +55,17 @@
     </section>
 
 
-    <p class="label" id="laneLabel">Naar Notion</p>
+    <p class="label" id="laneLabel">Taak in Notion</p>
     <div class="lanes" id="lanes" role="group" aria-labelledby="laneLabel"></div>
 
     <label class="field field-bottom">
-      <span>Notitie voor Eva <em>(optioneel)</em></span>
+      <span>Notitie voor EA <em>(optioneel)</em></span>
       <textarea id="note" rows="2" maxlength="500" placeholder="Bijv. reactie voor vrijdag, of: wacht op Bas"></textarea>
     </label>
 
     <p id="status" class="status" role="status" aria-live="polite"></p>
-    <p class="ver">versie 9</p>
+    <p class="ver">versie 10</p>
   </main>
-  <script src="taskpane.js?v=9"></script>
+  <script src="taskpane.js?v=10"></script>
 </body>
 </html>

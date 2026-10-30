@@ -5,11 +5,11 @@
            xmlns:mailappor="http://schemas.microsoft.com/office/mailappversionoverrides/1.0"
            xsi:type="MailApp">
   <Id>2c2658f7-4faa-450c-9387-4f9ccf079dbb</Id>
-  <Version>1.0.1.0</Version>
+  <Version>1.0.2.0</Version>
   <ProviderName>Lexar Partners</ProviderName>
   <DefaultLocale>nl-NL</DefaultLocale>
-  <DisplayName DefaultValue="Eva: Naar Notion"/>
-  <Description DefaultValue="Zet een mail met een klik klaar voor Eva als Notion-taak (Vandaag, Volgende dag, Deze week of Backlog)."/>
+  <DisplayName DefaultValue="EA Inbox Management"/>
+  <Description DefaultValue="Triage per mail met een voorstel om te archiveren, te beantwoorden of als taak in Notion te zetten."/>
   <IconUrl DefaultValue="https://leon-hartkoorn.github.io/EA_outlook_addin/assets/icon-64.png"/>
   <HighResolutionIconUrl DefaultValue="https://leon-hartkoorn.github.io/EA_outlook_addin/assets/icon-128.png"/>
   <SupportUrl DefaultValue="https://leon-hartkoorn.github.io/EA_outlook_addin/"/>
@@ -27,13 +27,13 @@
   <FormSettings>
     <Form xsi:type="ItemRead">
       <DesktopSettings>
-        <SourceLocation DefaultValue="https://leon-hartkoorn.github.io/EA_outlook_addin/taskpane.html?v=7"/>
+        <SourceLocation DefaultValue="https://leon-hartkoorn.github.io/EA_outlook_addin/taskpane.html?v=10"/>
         <RequestedHeight>250</RequestedHeight>
       </DesktopSettings>
     </Form>
     <Form xsi:type="ItemEdit">
       <DesktopSettings>
-        <SourceLocation DefaultValue="https://leon-hartkoorn.github.io/EA_outlook_addin/taskpane.html?v=7"/>
+        <SourceLocation DefaultValue="https://leon-hartkoorn.github.io/EA_outlook_addin/taskpane.html?v=10"/>
       </DesktopSettings>
     </Form>
   </FormSettings>
@@ -107,14 +107,14 @@
         <bt:Image id="icon80" DefaultValue="https://leon-hartkoorn.github.io/EA_outlook_addin/assets/icon-80.png"/>
       </bt:Images>
       <bt:Urls>
-        <bt:Url id="taskpaneUrl" DefaultValue="https://leon-hartkoorn.github.io/EA_outlook_addin/taskpane.html?v=7"/>
+        <bt:Url id="taskpaneUrl" DefaultValue="https://leon-hartkoorn.github.io/EA_outlook_addin/taskpane.html?v=10"/>
       </bt:Urls>
       <bt:ShortStrings>
-        <bt:String id="groupLabel" DefaultValue="Eva"/>
-        <bt:String id="buttonLabel" DefaultValue="Naar Notion"/>
+        <bt:String id="groupLabel" DefaultValue="EA"/>
+        <bt:String id="buttonLabel" DefaultValue="Inbox Management"/>
       </bt:ShortStrings>
       <bt:LongStrings>
-        <bt:String id="buttonTip" DefaultValue="Zet deze mail klaar voor Eva als Notion-taak."/>
+        <bt:String id="buttonTip" DefaultValue="Open EA Inbox Management voor deze mail."/>
       </bt:LongStrings>
     </Resources>
 
@@ -182,14 +182,14 @@
           <bt:Image id="icon80" DefaultValue="https://leon-hartkoorn.github.io/EA_outlook_addin/assets/icon-80.png"/>
         </bt:Images>
         <bt:Urls>
-          <bt:Url id="taskpaneUrl" DefaultValue="https://leon-hartkoorn.github.io/EA_outlook_addin/taskpane.html?v=7"/>
+          <bt:Url id="taskpaneUrl" DefaultValue="https://leon-hartkoorn.github.io/EA_outlook_addin/taskpane.html?v=10"/>
         </bt:Urls>
         <bt:ShortStrings>
-          <bt:String id="groupLabel" DefaultValue="Eva"/>
-          <bt:String id="buttonLabel" DefaultValue="Naar Notion"/>
+          <bt:String id="groupLabel" DefaultValue="EA"/>
+          <bt:String id="buttonLabel" DefaultValue="Inbox Management"/>
         </bt:ShortStrings>
         <bt:LongStrings>
-          <bt:String id="buttonTip" DefaultValue="Zet deze mail klaar voor Eva als Notion-taak."/>
+          <bt:String id="buttonTip" DefaultValue="Open EA Inbox Management voor deze mail."/>
         </bt:LongStrings>
       </Resources>
     </VersionOverrides>

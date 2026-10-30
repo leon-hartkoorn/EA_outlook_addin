@@ -119,7 +119,7 @@
       .then(function () {
         showDone(null);
         $("note").value = "";
-        setStatus("Verwijderd. Eva pakt deze mail niet op.");
+        setStatus("Verwijderd. EA pakt deze mail niet op.");
       })
       .catch(function (err) { setStatus("Ongedaan maken lukte niet: " + msg(err), true); })
       .then(function () { setBusy(false); });
@@ -127,11 +127,11 @@
 
   // ---- Eva triage ----------------------------------------------------------
   // Eva writes "evaTriage" (a JSON string) into the custom properties of a mail.
-  // A click is recorded as "evaAction" plus the category "Eva: actie"; Eva's
+  // A click is recorded as "evaAction" plus the category "EA: actie"; Eva's
   // poller executes it. Archive and "gelezen" are also tried directly via EWS.
   var TRIAGE_KEY = "evaTriage";
   var ACTION_KEY = "evaAction";
-  var ACTION_CAT = { displayName: "Eva: actie", color: "Preset8" };
+  var ACTION_CAT = { displayName: "EA: actie", color: "Preset8" };
   var M_NS = "http://schemas.microsoft.com/exchange/services/2006/messages";
   var T_NS = "http://schemas.microsoft.com/exchange/services/2006/types";
   var folderCache = {};
@@ -157,7 +157,7 @@
       case "notion":
         var l = laneFromTriage(a.lane);
         return "Naar Notion: " + (l ? l.label : (a.lane || ""));
-      case "draft": return "Laat Eva een reactie schrijven";
+      case "draft": return "Laat EA een reactie schrijven";
       case "fyi": return "Markeer als gelezen";
       default: return "Laten staan";
     }
@@ -298,10 +298,10 @@
 
   function pendingText(a) {
     switch (a.type) {
-      case "archive": return "Eva verplaatst hem zo naar " + ((a.params && (a.params.folderLabel || a.params.folderPath)) || "de map");
-      case "draft": return "Staat klaar voor Eva: zij schrijft een concept";
-      case "fyi": return "Staat klaar voor Eva: wordt als gelezen gemarkeerd";
-      default: return "Staat klaar voor Eva: " + (a.label || a.type);
+      case "archive": return "EA verplaatst hem zo naar " + ((a.params && (a.params.folderLabel || a.params.folderPath)) || "de map");
+      case "draft": return "Staat klaar voor EA: concept volgt";
+      case "fyi": return "Staat klaar voor EA: wordt als gelezen gemarkeerd";
+      default: return "Staat klaar voor EA: " + (a.label || a.type);
     }
   }
 
@@ -478,7 +478,7 @@
     }
     $("done").hidden = !lane;
     if (!lane) return;
-    $("doneText").textContent = "Staat klaar voor Eva: " + lane.label;
+    $("doneText").textContent = "Staat klaar voor EA: " + lane.label;
     var n = $("doneNote");
     n.hidden = !note;
     n.textContent = note ? "Notitie: " + note : "";
@@ -537,7 +537,7 @@
         var local = propsErr ? "fout: " + propsErr : "velden: " + (keys.join(", ") || "geen");
         $("noTriage").textContent = "Triage ophalen...";
         $("diag").hidden = false;
-        if (!ewsAvailable()) { $("noTriage").textContent = "Nog geen triage van Eva voor deze mail (" + local + "; server niet bereikbaar)"; return; }
+        if (!ewsAvailable()) { $("noTriage").textContent = "Nog geen triage voor deze mail (" + local + "; server niet bereikbaar)"; return; }
         var forId = item().itemId;
         ewsCustomProps(forId).then(function (obj) {
           if (!item() || item().itemId !== forId) return; // selection moved on
@@ -546,10 +546,10 @@
             renderTriage(t2, parseJson(obj[ACTION_KEY]));
             if (!note && obj[NOTE_KEY]) { $("note").value = obj[NOTE_KEY]; showDone(lane, obj[NOTE_KEY]); }
           } else {
-            $("noTriage").textContent = "Nog geen triage van Eva voor deze mail (" + local + "; server: " + (obj ? Object.keys(obj).join(", ") || "leeg" : "geen") + ")";
+            $("noTriage").textContent = "Nog geen triage voor deze mail (" + local + "; server: " + (obj ? Object.keys(obj).join(", ") || "leeg" : "geen") + ")";
           }
         }).catch(function (e) {
-          $("noTriage").textContent = "Nog geen triage van Eva voor deze mail (" + local + "; server-fout: " + msg(e) + ")";
+          $("noTriage").textContent = "Nog geen triage voor deze mail (" + local + "; server-fout: " + msg(e) + ")";
         });
       }
     }).catch(function (e) { renderTriage(null, null); $("noTriage").textContent = "Triage laden mislukt: " + msg(e); });
@@ -563,7 +563,7 @@
       loadProps().then(function (p) {
         p.set("evaPing", new Date().toISOString());
         return call(function (cb) { p.saveAsync(cb); });
-      }).then(function () { setStatus("Test opgeslagen. Laat Eva weten dat je op Test hebt geklikt (id " + String(item().itemId).slice(-12) + ")."); },
+      }).then(function () { setStatus("Test opgeslagen. Laat EA weten dat je op Test hebt geklikt (id " + String(item().itemId).slice(-12) + ")."); },
               function (e) { setStatus("Test mislukt: " + msg(e), true); });
     });
     $("triageUndo").addEventListener("click", undoTriageState);

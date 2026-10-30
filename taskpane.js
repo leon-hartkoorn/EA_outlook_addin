@@ -506,17 +506,26 @@
     $("noTriage").hidden = true;
     if (!item()) { loadSubject(); return; }
     loadSubject();
+    // Load categories and custom properties independently: one failing must not hide the triage.
+    var propsErr = "";
     Promise.all([
-      currentNotionCategories(),
-      loadProps().catch(function () { return null; })
+      currentNotionCategories().catch(function () { return []; }),
+      loadProps().catch(function (e) { propsErr = msg(e); return null; })
     ]).then(function (res) {
       var p = res[1];
       var note = p ? (p.get(NOTE_KEY) || "") : "";
       var lane = res[0].length ? laneByCategory(res[0][0]) : null;
       $("note").value = note;
       showDone(lane, note);
-      renderTriage(p ? parseJson(p.get(TRIAGE_KEY)) : null, p ? parseJson(p.get(ACTION_KEY)) : null);
-    }).catch(function () { renderTriage(null, null); });
+      var tri = p ? parseJson(p.get(TRIAGE_KEY)) : null;
+      renderTriage(tri, p ? parseJson(p.get(ACTION_KEY)) : null);
+      if (!tri) {
+        // Small diagnostic so Eva can see why no triage shows.
+        var keys = [];
+        try { keys = Object.keys((p && p.getAll && p.getAll()) || {}); } catch (e) {}
+        $("noTriage").textContent = "Nog geen triage van Eva voor deze mail" + (propsErr ? " (fout: " + propsErr + ")" : " (velden: " + (keys.join(", ") || "geen") + ")");
+      }
+    }).catch(function (e) { renderTriage(null, null); $("noTriage").textContent = "Triage laden mislukt: " + msg(e); });
   }
 
   Office.onReady(function (info) {

@@ -190,6 +190,7 @@
   function ewsAvailable() {
     return !!(Office.context.mailbox && typeof Office.context.mailbox.makeEwsRequestAsync === "function" && item() && item().itemId);
   }
+  var lastEwsRaw = "";
   function ews(body) {
     var env = '<?xml version="1.0" encoding="utf-8"?>' +
       '<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:m="' + M_NS + '" xmlns:t="' + T_NS + '">' +
@@ -200,6 +201,10 @@
         Office.context.mailbox.makeEwsRequestAsync(env, function (r) {
           if (r.status !== Office.AsyncResultStatus.Succeeded) { reject(r.error || new Error("EWS mislukt")); return; }
           var doc = new DOMParser().parseFromString(r.value, "text/xml");
+          lastEwsRaw = String(r.value || "").slice(0, 400);
+          // A SOAP fault has no ResponseClass; surface it instead of treating it as an empty answer.
+          var fault = doc.getElementsByTagName("faultstring")[0] || doc.getElementsByTagNameNS("http://schemas.xmlsoap.org/soap/envelope/", "Fault")[0];
+          if (fault) { reject(new Error("EWS fault: " + fault.textContent.slice(0, 200))); return; }
           var all = doc.getElementsByTagName("*");
           for (var i = 0; i < all.length; i++) {
             var rc = all[i].getAttribute && all[i].getAttribute("ResponseClass");
@@ -581,7 +586,7 @@
             '<m:ParentFolderIds><t:DistinguishedFolderId Id="msgfolderroot"/></m:ParentFolderIds></m:FindFolder>').then(function (d) {
             var n = d.getElementsByTagNameNS(T_NS, "DisplayName"), names = [];
             for (var i = 0; i < n.length; i++) names.push(n[i].textContent);
-            $("noTriage").textContent += " | mappen: " + names.join(", ");
+            $("noTriage").textContent += " | mappen: " + names.join(", ") + " | raw: " + lastEwsRaw;
           }, function (e2) { $("noTriage").textContent += " | mappen-fout: " + msg(e2); });
         });
       }

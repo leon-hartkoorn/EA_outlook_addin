@@ -10,9 +10,9 @@
   <DefaultLocale>nl-NL</DefaultLocale>
   <DisplayName DefaultValue="Eva: Naar Notion"/>
   <Description DefaultValue="Zet een mail met een klik klaar voor Eva als Notion-taak (Vandaag, Volgende dag, Deze week of Backlog)."/>
-  <IconUrl DefaultValue="https://leon-hartkoorn.github.io/eva-outlook-addin/assets/icon-64.png"/>
-  <HighResolutionIconUrl DefaultValue="https://leon-hartkoorn.github.io/eva-outlook-addin/assets/icon-128.png"/>
-  <SupportUrl DefaultValue="https://leon-hartkoorn.github.io/eva-outlook-addin/"/>
+  <IconUrl DefaultValue="https://leon-hartkoorn.github.io/EA_outlook_addin/assets/icon-64.png"/>
+  <HighResolutionIconUrl DefaultValue="https://leon-hartkoorn.github.io/EA_outlook_addin/assets/icon-128.png"/>
+  <SupportUrl DefaultValue="https://leon-hartkoorn.github.io/EA_outlook_addin/"/>
   <AppDomains>
     <AppDomain>https://leon-hartkoorn.github.io</AppDomain>
   </AppDomains>
@@ -27,13 +27,13 @@
   <FormSettings>
     <Form xsi:type="ItemRead">
       <DesktopSettings>
-        <SourceLocation DefaultValue="https://leon-hartkoorn.github.io/eva-outlook-addin/taskpane.html"/>
+        <SourceLocation DefaultValue="https://leon-hartkoorn.github.io/EA_outlook_addin/taskpane.html"/>
         <RequestedHeight>250</RequestedHeight>
       </DesktopSettings>
     </Form>
     <Form xsi:type="ItemEdit">
       <DesktopSettings>
-        <SourceLocation DefaultValue="https://leon-hartkoorn.github.io/eva-outlook-addin/taskpane.html"/>
+        <SourceLocation DefaultValue="https://leon-hartkoorn.github.io/EA_outlook_addin/taskpane.html"/>
       </DesktopSettings>
     </Form>
   </FormSettings>
@@ -102,12 +102,12 @@
     </Hosts>
     <Resources>
       <bt:Images>
-        <bt:Image id="icon16" DefaultValue="https://leon-hartkoorn.github.io/eva-outlook-addin/assets/icon-16.png"/>
-        <bt:Image id="icon32" DefaultValue="https://leon-hartkoorn.github.io/eva-outlook-addin/assets/icon-32.png"/>
-        <bt:Image id="icon80" DefaultValue="https://leon-hartkoorn.github.io/eva-outlook-addin/assets/icon-80.png"/>
+        <bt:Image id="icon16" DefaultValue="https://leon-hartkoorn.github.io/EA_outlook_addin/assets/icon-16.png"/>
+        <bt:Image id="icon32" DefaultValue="https://leon-hartkoorn.github.io/EA_outlook_addin/assets/icon-32.png"/>
+        <bt:Image id="icon80" DefaultValue="https://leon-hartkoorn.github.io/EA_outlook_addin/assets/icon-80.png"/>
       </bt:Images>
       <bt:Urls>
-        <bt:Url id="taskpaneUrl" DefaultValue="https://leon-hartkoorn.github.io/eva-outlook-addin/taskpane.html"/>
+        <bt:Url id="taskpaneUrl" DefaultValue="https://leon-hartkoorn.github.io/EA_outlook_addin/taskpane.html"/>
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="groupLabel" DefaultValue="Eva"/>
@@ -177,12 +177,12 @@
       </Hosts>
       <Resources>
         <bt:Images>
-          <bt:Image id="icon16" DefaultValue="https://leon-hartkoorn.github.io/eva-outlook-addin/assets/icon-16.png"/>
-          <bt:Image id="icon32" DefaultValue="https://leon-hartkoorn.github.io/eva-outlook-addin/assets/icon-32.png"/>
-          <bt:Image id="icon80" DefaultValue="https://leon-hartkoorn.github.io/eva-outlook-addin/assets/icon-80.png"/>
+          <bt:Image id="icon16" DefaultValue="https://leon-hartkoorn.github.io/EA_outlook_addin/assets/icon-16.png"/>
+          <bt:Image id="icon32" DefaultValue="https://leon-hartkoorn.github.io/EA_outlook_addin/assets/icon-32.png"/>
+          <bt:Image id="icon80" DefaultValue="https://leon-hartkoorn.github.io/EA_outlook_addin/assets/icon-80.png"/>
         </bt:Images>
         <bt:Urls>
-          <bt:Url id="taskpaneUrl" DefaultValue="https://leon-hartkoorn.github.io/eva-outlook-addin/taskpane.html"/>
+          <bt:Url id="taskpaneUrl" DefaultValue="https://leon-hartkoorn.github.io/EA_outlook_addin/taskpane.html"/>
         </bt:Urls>
         <bt:ShortStrings>
           <bt:String id="groupLabel" DefaultValue="Eva"/>

@@ -1,4 +1,4 @@
-# eva-outlook-addin
+# EA_outlook_addin
 
 Outlook add-in "Naar Notion". In a mail (read or compose), click **Naar Notion** in the ribbon, pick a lane (Vandaag, Volgende dag, Deze week, Backlog) and optionally type a note. The add-in:
 
@@ -13,14 +13,14 @@ Static HTML/JS/CSS plus Office.js. No secrets, no backend.
 
 ## Publish (one time)
 
-1. On github.com create an **empty public** repo `eva-outlook-addin` under `leon-hartkoorn` (no README, no license).
+1. On github.com create an **empty public** repo `EA_outlook_addin` under `leon-hartkoorn` (no README, no license).
 2. From this folder:
    ```
-   git remote add origin https://github.com/leon-hartkoorn/eva-outlook-addin.git
+   git remote add origin https://github.com/leon-hartkoorn/EA_outlook_addin.git
    git branch -M main
    git push -u origin main
    ```
-3. Repo Settings > Pages > Source "Deploy from a branch", branch `main`, folder `/ (root)`, Save. After a minute, check https://leon-hartkoorn.github.io/eva-outlook-addin/taskpane.html loads.
+3. Repo Settings > Pages > Source "Deploy from a branch", branch `main`, folder `/ (root)`, Save. After a minute, check https://leon-hartkoorn.github.io/EA_outlook_addin/taskpane.html loads.
 
 ## Install in Outlook
 

@@ -96,3 +96,114 @@ textarea:focus { outline: 2px solid var(--focus); outline-offset: -1px; border-c
 .status.error { color: var(--red-fg); }
 
 .field-bottom { margin: 16px 0 0; }
+
+/* ---- Eva triage card ---------------------------------------------------- */
+:root { --purple-bg: #e8deee; --purple-fg: #6940a5; --purple-line: #d5c6e3; }
+
+.triage {
+  border: 1px solid var(--purple-line); border-radius: 8px;
+  padding: 12px; margin-bottom: 16px; background: #fbf9fd;
+}
+.triage-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.eva-badge {
+  display: inline-flex; align-items: center; padding: 1px 7px; border-radius: 3px;
+  background: var(--purple-bg); color: var(--purple-fg); font-size: 12px; font-weight: 600;
+}
+.triage-at { font-size: 11px; color: var(--muted); }
+.triage-summary { margin: 0 0 4px; word-break: break-word; }
+.triage-context { margin: 0 0 10px; font-size: 12px; color: var(--muted); word-break: break-word; }
+
+.btn-primary {
+  display: block; width: 100%; min-height: 40px; padding: 8px 12px; margin-top: 6px;
+  background: var(--purple-fg); color: #fff; border: 1px solid var(--purple-fg); border-radius: 6px;
+  font: inherit; font-weight: 600; text-align: left; cursor: pointer;
+}
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-primary:focus-visible, .btn-alt:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.btn-primary:disabled, .btn-alt:disabled { cursor: progress; opacity: .6; }
+.triage-reason { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
+
+.triage-alts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.btn-alt {
+  min-height: 32px; padding: 4px 10px;
+  background: #fff; border: 1px solid var(--line); border-radius: 6px;
+  font: inherit; font-size: 13px; color: var(--text); cursor: pointer;
+}
+.btn-alt:hover { background: var(--hover); }
+
+.triage-state {
+  margin-top: 8px; padding: 10px; border-radius: 6px; background: var(--purple-bg);
+}
+.triage-state strong { display: block; font-weight: 600; color: var(--purple-fg); }
+.triage-state .undo { margin-top: 8px; }
+
+.no-triage { margin: 0 0 14px; font-size: 12px; color: var(--muted); }
+
+.recent {
+  border: 1px solid #cfe3d3; background: var(--green-bg);
+  border-radius: 8px; padding: 10px 12px; margin-bottom: 16px;
+}
+.recent p { margin: 0; font-weight: 600; }
+.recent .undo { margin-top: 8px; }
+
+/* ---- Compact, narrow-friendly layout (works at 250-300px) --------------- */
+html, body { font-size: 13px; line-height: 1.4; }
+.pane { padding: 8px 10px; max-width: none; }
+.head { gap: 6px; align-items: center; margin-bottom: 8px; }
+.head img { margin: 0; flex: none; border-radius: 3px; }
+h1.subject {
+  margin: 0; font-size: 12px; font-weight: 600; color: var(--text);
+  display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.label { font-size: 11px; margin: 0 0 4px; }
+
+.lanes { flex-direction: row; flex-wrap: wrap; gap: 4px; }
+.lane {
+  width: auto; min-height: 32px; padding: 4px 6px; border-radius: 6px;
+  justify-content: center; flex: 0 0 auto;
+}
+.pill { font-size: 12px; padding: 1px 6px; }
+
+.field { margin-bottom: 8px; }
+.field span { font-size: 11px; margin-bottom: 2px; }
+textarea { min-height: 36px; padding: 6px 8px; font-size: 12px; }
+.field-bottom { margin: 10px 0 0; }
+
+.done { padding: 8px; margin-bottom: 8px; border-radius: 6px; }
+.done-row { gap: 6px; }
+.check { width: 18px; height: 18px; }
+.check svg { width: 12px; height: 12px; }
+.done strong { font-size: 12px; }
+.done-note { font-size: 11px; }
+.undo { margin-top: 6px; min-height: 32px; padding: 4px 10px; font-size: 12px; }
+
+.status { margin: 6px 0 0; font-size: 11px; min-height: 0; }
+
+.triage { padding: 8px; margin-bottom: 8px; border-radius: 6px; }
+.triage-head { margin-bottom: 4px; }
+.eva-badge { font-size: 11px; padding: 0 6px; }
+.triage-at { font-size: 10px; white-space: nowrap; }
+.triage-summary {
+  margin: 0 0 2px; font-size: 12px;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.triage-context {
+  margin: 0 0 6px; font-size: 11px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#triageActions { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.btn-primary {
+  display: inline-block; width: auto; max-width: 100%; min-height: 32px; margin: 0;
+  padding: 4px 10px; font-size: 12px; border-radius: 6px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.triage-reason { flex-basis: 100%; order: 3; margin: 2px 0 0; font-size: 11px; }
+.triage-alts { display: contents; }
+.btn-alt { min-height: 32px; padding: 4px 8px; font-size: 12px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.triage-state { margin-top: 4px; padding: 6px 8px; }
+.triage-state strong { font-size: 12px; }
+.no-triage { margin: 0 0 8px; font-size: 11px; }
+.recent { padding: 6px 8px; margin-bottom: 8px; border-radius: 6px; }
+.recent p { font-size: 12px; }
+
+[hidden] { display: none !important; }

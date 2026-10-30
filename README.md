@@ -1,13 +1,37 @@
 # EA_outlook_addin
 
-Outlook add-in "Naar Notion". In a mail (read or compose), click **Naar Notion** in the ribbon, pick a lane (Vandaag, Volgende dag, Deze week, Backlog) and optionally type a note. The add-in:
+Outlook add-in "Eva: Naar Notion". In a mail, click **Naar Notion** in the ribbon (pinnable; the pane follows the selected mail). The pane shows, top to bottom:
 
-- creates the master categories once if missing: `Notion: Sprint 1 day` (orange), `Notion: Sprint next day` (yellow), `Notion: Sprint 1 week` (green), `Notion: Backlog` (gray);
-- puts that category on the mail (only one Notion lane at a time);
-- stores the note as custom property `evaNote` (plus `evaLane`), best effort;
-- "Ongedaan maken" removes the category and the note.
+1. **Eva triage card** (read mode only): Eva's summary of this mail, a context line, one recommended action (primary button, with reason) and alternatives as chips. Without a triage it shows "Nog geen triage van Eva voor deze mail".
+2. **Lane chips** Sprint 1D, Next day, Sprint 1W, Backlog, On hold: puts category `Notion: Sprint 1 day` / `Notion: Sprint next day` / `Notion: Sprint 1 week` / `Notion: Backlog` / `Notion: On hold/waiting for` on the mail (one lane at a time; master categories created once if missing).
+3. **Note for Eva**, stored as custom property `evaNote` (plus `evaLane`), autosaved.
 
-Eva later finds mails with a `Notion: *` category via Graph and creates the Notion cards.
+Layout is compact and works at 250-300px pane width.
+
+## Eva triage: data contract
+
+All values live in the add-in's custom properties, which Outlook stores as ONE Graph extended property holding a JSON object of string values:
+
+```
+String {00020329-0002-0000-C000-000000000046} Name cecp-2c2658f7-4faa-450c-9387-4f9ccf079dbb
+```
+
+- `evaTriage` (written by Eva via `04_Assistant/tools/mail_triage.py write`), a JSON string:
+  ```
+  {"v":1,"at":"2026-10-30T13:05:00+00:00","summary":"...","context":"OoakT, Notion: ..., WO 28/10",
+   "recommend":{"type":"archive","folderPath":"Portfolio Companies/OoaKTravel_2023","folderLabel":"OoakT","label":"Naar map OoakT","reason":"..."},
+   "alternatives":[{"type":"notion","lane":"Sprint 1 week","cardTitle":"..."},{"type":"fyi"},{"type":"draft","gist":"..."}]}
+  ```
+  Action types: `archive` {folderPath, folderLabel}, `notion` {lane: key/label/Notion status, cardTitle}, `draft` {gist}, `fyi`, `none`. `label` is optional (a Dutch default is used).
+- `evaAction` (written by the pane on click), a JSON string `{type, params, label, at}`, together with category `Eva: actie` (purple, Preset8). Eva's poller executes it (`mail_triage.py pending` / `move` / `clear`) and removes both.
+
+Click behaviour:
+- `archive`: first tries a direct EWS move (FindFolder by path under msgfolderroot, UpdateItem IsRead, MoveItem). Works in classic Outlook and Outlook on the web while EWS is available. Shows "Gearchiveerd in ..." with undo (moves back to Postvak IN, restores unread). If EWS is unavailable or fails (new Outlook, EWS retired), it records `evaAction` and shows "Eva verplaatst hem zo".
+- `fyi`: EWS mark read (undo restores), else recorded.
+- `draft`: always recorded; Eva writes the draft with `tools/reply_draft.py`.
+- `notion`: same as clicking that lane, note prefilled with `cardTitle`.
+- `none`: nothing is stored.
+- Recorded actions can be undone in the pane (removes `evaAction` and `Eva: actie`).
 
 Static HTML/JS/CSS plus Office.js. No secrets, no backend.
 
@@ -40,7 +64,7 @@ GET /me/messages?$filter=categories/any(c:c eq 'Notion: Sprint 1 day')
     &$expand=singleValueExtendedProperties($filter=id eq 'String {00020329-0002-0000-C000-000000000046} Name cecp-2c2658f7-4faa-450c-9387-4f9ccf079dbb')
 ```
 
-The value is a JSON string like `{"evaNote":"...","evaLane":"Notion: Sprint 1 day"}`.
+The value is a JSON string like `{"evaNote":"...","evaLane":"Notion: Sprint 1 day","evaTriage":"{...}"}`.
 
 ## Updating
 

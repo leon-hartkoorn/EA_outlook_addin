@@ -11,12 +11,33 @@
 <body>
   <main class="pane">
     <header class="head">
-      <img src="assets/icon-32.png" alt="" width="24" height="24">
-      <div>
-        <h1>Naar Notion</h1>
-        <p class="subject" id="subject">Mail laden...</p>
-      </div>
+      <img src="assets/icon-32.png" alt="" width="16" height="16">
+      <h1 class="subject" id="subject">Mail laden...</h1>
     </header>
+
+    <section id="recent" class="recent" hidden>
+      <p id="recentText"></p>
+      <button type="button" id="recentUndo" class="undo">Ongedaan maken</button>
+    </section>
+
+    <section id="triage" class="triage" hidden aria-labelledby="triageTitle">
+      <div class="triage-head">
+        <span class="eva-badge" id="triageTitle">Eva</span>
+        <span id="triageAt" class="triage-at"></span>
+      </div>
+      <p id="triageSummary" class="triage-summary"></p>
+      <p id="triageContext" class="triage-context" hidden></p>
+      <div id="triageActions">
+        <button type="button" id="triagePrimary" class="btn-primary"></button>
+        <p id="triageReason" class="triage-reason" hidden></p>
+        <div id="triageAlts" class="triage-alts"></div>
+      </div>
+      <div id="triageState" class="triage-state" hidden>
+        <strong id="triageStateText"></strong>
+        <button type="button" id="triageUndo" class="undo">Ongedaan maken</button>
+      </div>
+    </section>
+    <p id="noTriage" class="no-triage" hidden>Nog geen triage van Eva voor deze mail</p>
 
     <section id="done" class="done" hidden>
       <div class="done-row">
@@ -32,12 +53,12 @@
     </section>
 
 
-    <p class="label" id="laneLabel">Kies een lane</p>
+    <p class="label" id="laneLabel">Naar Notion</p>
     <div class="lanes" id="lanes" role="group" aria-labelledby="laneLabel"></div>
 
     <label class="field field-bottom">
       <span>Notitie voor Eva <em>(optioneel)</em></span>
-      <textarea id="note" rows="2" maxlength="500" placeholder="Bijv. reactie sturen voor vrijdag, of bij On hold: wacht op Bas, contract tekenen"></textarea>
+      <textarea id="note" rows="2" maxlength="500" placeholder="Bijv. reactie voor vrijdag, of: wacht op Bas"></textarea>
     </label>
 
     <p id="status" class="status" role="status" aria-live="polite"></p>
